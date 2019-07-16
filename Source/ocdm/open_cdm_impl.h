@@ -151,6 +151,7 @@ private:
         , _interested(0)
         , _sessionKeys()
         , _sink(this)
+        , _extSystem(false)
     {
         printf("Trying to open an OCDM connection @ %s\n", domainName);
 
@@ -537,6 +538,16 @@ public:
             secureStoreHashLength);
     }
 
+    bool IsExtendedSystem() const
+    {
+        return _extSystem;
+    }
+
+    void SetIsExtendedSystem(bool isExtSystem)
+    {
+        _extSystem = isExtSystem;
+    }
+
 private:
     mutable uint32_t _refCount;
 	Core::ProxyType<RPC::InvokeServerType<4, 1> > _engine;
@@ -548,6 +559,7 @@ private:
     mutable volatile uint32_t _interested;
     std::map<string, std::list<KeyId>> _sessionKeys;
     WPEFramework::Core::Sink<Sink> _sink;
+    bool _extSystem; // whether it has been upgraded to extended system.
     static OpenCDMAccessor* _singleton;
 };
 

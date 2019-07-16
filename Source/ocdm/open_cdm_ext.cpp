@@ -97,6 +97,7 @@ opencdm_create_system_ext(struct OpenCDMAccessor* system,
     ASSERT(system != nullptr);
 
     OpenCDMAccessor* accessor = system;
+    accessor->SetIsExtendedSystem(true);
     accessor->CreateSystemExt(keySystem);
     accessor->InitSystemExt(keySystem);
 
@@ -400,8 +401,7 @@ opencdm_construct_session(struct OpenCDMAccessor* system, const char keySystem[]
 
     TRACE_L1("Creating a Session for %s", keySystem);
 
-    // TODO: Since we are passing key system name anyway, not need for if here.
-    if (strcmp(keySystem, "com.netflix.playready") != 0) {
+    if (!system->IsExtendedSystem()) {
         if (system != nullptr) {
             *session = new ExtendedOpenCDMSession(
                 static_cast<OCDM::IAccessorOCDM*>(system), std::string(keySystem),
