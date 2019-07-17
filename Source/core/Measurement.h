@@ -11,8 +11,8 @@ namespace Core {
     class MeasurementType {
     public:
         MeasurementType()
-            : _min(Core::NumberType<TYPE>::Max())
-            , _max(Core::NumberType<TYPE>::Min())
+            : _min(0)
+            , _max(0)
             , _last(0)
             , _average(0)
             , _measurements(0)
@@ -44,15 +44,15 @@ namespace Core {
     public:
         void Reset()
         {
-            _min = Core::NumberType<TYPE>::Max();
-            _max = Core::NumberType<TYPE>::Min();
+            _min = 0;
+            _max = 0;
             _last = 0;
             _average = 0;
             _measurements = 0;
         }
         void Set(const TYPE value)
         {
-            if (value < _min) {
+            if ((value < _min) || (_min ==0)) {
                 _min = value;
             }
             if (value > _max) {
