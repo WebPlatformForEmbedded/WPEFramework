@@ -63,6 +63,7 @@ namespace Core {
             , _tail(0)
             , _size(static_cast<uint32_t>(BUFFER::Size()))
             , _buffer(BUFFER::Buffer())
+            , _full(false)
         {
         }
         virtual ~CyclicDataBuffer()
@@ -72,25 +73,25 @@ namespace Core {
     public:
         inline uint32_t Filled() const
         {
-            return ((_head >= _tail) ? (_head - _tail) : _size - (_tail - _head));
+            return (_full ? _size : ((_head >= _tail) ? (_head - _tail) : _size - (_tail - _head)));
         }
         inline uint32_t Free() const
         {
-            return ((_head >= _tail) ? (_size - (_head - _tail)) : (_tail - _head));
+            return (_full ? 0 : ((_head >= _tail) ? (_size - (_head - _tail)) : (_tail - _head)));
         }
         inline bool IsEmpty() const
         {
-            return (_head == _tail);
+            return ((_head == _tail) && !_full);
         }
         uint16_t Read(uint8_t* dataFrame, const uint16_t maxSendSize) const
         {
             uint16_t result = 0;
 
-            if (_head != _tail) {
-                if (_tail > _head) {
+            if (!IsEmpty()) {
+                if (_tail >= _head) {
                     result = ((_size - _tail) < maxSendSize ? (_size - _tail) : maxSendSize);
                     ::memcpy(dataFrame, &(_buffer[_tail]), result);
-                    _tail = (_size == (_tail + result) ? 0 : (_tail + result));
+                    _tail = (_tail + result) % _size;
                 }
 
                 if ((_tail < _head) && (result < maxSendSize)) {
@@ -99,6 +100,8 @@ namespace Core {
                     _tail += copySize;
                     result += copySize;
                 }
+                if (result && _full)
+                    _full = false;
             }
 
             return (result);
@@ -109,22 +112,24 @@ namespace Core {
             uint32_t result = ((receivedSize + _head) > _size ? (_size - _head) : receivedSize);
 
             ::memcpy(&(_buffer[_head]), dataFrame, result);
-            _head = ((_head + result) < _size ? (_head + result) : 0);
+            _head = (_head + result) % _size;
 
             while (result < receivedSize) {
                 // we continue at the beginning.
                 uint32_t copySize = ((receivedSize - result) > static_cast<uint16_t>(_size) ? _size : (receivedSize - result));
 
                 ::memcpy(_buffer, &(dataFrame[result]), copySize);
-                _head = ((_head + copySize) < _size ? (_head + copySize) : 0);
+                _head = (_head + copySize) % _size;
                 result += copySize;
             }
 
             if (freeBuffer < receivedSize) {
                 // We have an override, adapt the tail.
-                _tail = ((_head + 1) < static_cast<uint16_t>(_size) ? (_head + 1) : 0);
+                _tail = _head;
             }
 
+            if ((_head == _tail) && result)
+                _full = true;
             return (result);
         }
 
@@ -133,6 +138,7 @@ namespace Core {
         mutable uint32_t _tail;
         const uint32_t _size;
         uint8_t* _buffer;
+        mutable bool _full;
     };
 }
 
