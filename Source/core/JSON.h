@@ -1187,6 +1187,48 @@ namespace Core {
                 }
             }
 
+        private:
+            /*
+                Serialization methods
+            */
+            inline void AddEscapedCharacter(char* outputStream, char escapeSymbol, uint16_t& index, const uint16_t maxLength) const
+            {
+                outputStream[index++] = '\\';
+
+                if (maxLength - index >= 1)
+                    outputStream[index++] = escapeSymbol;
+            }
+
+            inline void AddNonPrintableCharacter(char* outputStream, char character, uint16_t& index, const uint16_t maxLength) const
+            {
+                index += snprintf(&(outputStream[index]), maxLength - index, "\\u%04x", static_cast<uint8_t>(character));
+            }
+
+            void AddJsonStringCharacter(char* outputStream, char character, uint16_t& index, const uint16_t maxLength) const
+            {
+                if (character == '\\') {
+                    AddEscapedCharacter(outputStream, '\\', index, maxLength);
+                } else if (character == '\b') {
+                    AddEscapedCharacter(outputStream, 'b', index, maxLength);
+                } else if (character == '\f') {
+                    AddEscapedCharacter(outputStream, 'f', index, maxLength);
+                } else if (character == '\r') {
+                    AddEscapedCharacter(outputStream, 'r', index, maxLength);
+                } else if (character == '\t') {
+                    AddEscapedCharacter(outputStream, 't', index, maxLength);
+                } else if (character == '\n') {
+                    AddEscapedCharacter(outputStream, 'n', index, maxLength);
+                } else if (character == '\"') {
+                    AddEscapedCharacter(outputStream, '\"', index, maxLength);
+                } else if (character == '/') {
+                    AddEscapedCharacter(outputStream, '/', index, maxLength);
+                } else if (isprint(character) == false) {
+                    AddNonPrintableCharacter(outputStream, character, index, maxLength);
+                } else {
+                    outputStream[index++] = character;
+                }
+            }
+
         protected:
             inline bool MatchLastCharacter(const string& str, char ch) const
             {
@@ -1219,17 +1261,9 @@ namespace Core {
                         offset += length;
 
                         while ((result < maxLength) && (length > 0)) {
-
-                            // See where we are and add...
-                            if ((*source != '\"') || (_unaccountedCount == 1)) {
-                                _unaccountedCount = 0;
-                                stream[result++] = *source++;
-                                length--;
-                            } else {
-                                // this we need to escape...
-                                stream[result++] = '\\';
-                                _unaccountedCount = 1;
-                            }
+                            AddJsonStringCharacter(stream, (*source), result, maxLength);
+                            source++;
+                            length--;
                         }
                     }
 
@@ -1320,7 +1354,7 @@ namespace Core {
                     EscapeSequenceAction escapeHandling = EscapeSequenceAction::NOTHING;
                     if (finished == false) {
                         if ((escapedSequence == true)) {
-                            if (!IsValidEscapeSequence(current)) {
+                            if (!IsValidEscapeSequence(current, stream, result, maxLength)) {
                                 finished = true;
                                 error = Error{ "Invalid escape sequence \"\\" + std::string(1, current) + "\"." };
                                 ++result;
@@ -1332,7 +1366,7 @@ namespace Core {
 
                         if (escapeHandling == EscapeSequenceAction::COLLAPSE || escapeHandling == EscapeSequenceAction::REPLACE) {
                             if (escapeHandling == EscapeSequenceAction::REPLACE) {
-                                current = EscapeSequenceReplacemnent(current);
+                                current = EscapeSequenceReplacemnent(current, stream, result, maxLength);
                             }
                             _value[_value.length() - 1] = current;
                             ++_unaccountedCount;
@@ -1442,14 +1476,24 @@ namespace Core {
             }
 
         private:
-            bool IsValidEscapeSequence(char current) const
+            bool IsValidEscapeSequence(char current, const char* inputStream, uint16_t& index, uint16_t maxLength) const
             {
+                bool result = true;
                 ASSERT(MatchLastCharacter(_value, '\\') == true);
                 // Any character may be escaped using \uXXXX. The serlializer should escape
                 // control chars with values less that 0x1F using this convention. Also serializer
                 // should change '"' '\' '\n' '\t' '\f' '\r' '\f' to
                 // '\''"' '\''\' '\''n' '\''t' '\''f' '\''r' '\''f' and deserisalizer has to change tham back
-                return current == '"' || current == 'b' || current == 'n' || current == 't' || current == 'u' || current == '/' || current == '\\' || current == 'f' || current == 'r';
+                if (current == 'u') {
+                    if (maxLength - index < 4) {
+                        result = false;
+                    } else {
+                        result = std::all_of(&(inputStream[index + 1]), &(inputStream[index + 5]), isxdigit);
+                    }
+                } else
+                    result = current == '"' || current == 'b' || current == 'n' || current == 't' || current == '/' || current == '\\' || current == 'f' || current == 'r';
+
+                return result;
             }
 
             enum class EscapeSequenceAction {
@@ -1461,17 +1505,14 @@ namespace Core {
             EscapeSequenceAction GetEscapeSequenceAction(char current) const
             {
                 EscapeSequenceAction action = EscapeSequenceAction::COLLAPSE;
-                if (current == 'u') {
-                    action = EscapeSequenceAction::NOTHING;
-                } else {
-                    if (current == 'n' || current == 'r' || current == 't' || current == 'f' || current == 'b')
-                        action = EscapeSequenceAction::REPLACE;
+                if (current == 'n' || current == 'r' || current == 't' || current == 'f' || current == 'b' || current == 'u') {
+                    action = EscapeSequenceAction::REPLACE;
                 }
 
                 return action;
             }
 
-            char EscapeSequenceReplacemnent(char current) const
+            char EscapeSequenceReplacemnent(char current, const char* inputStream, uint16_t& index, uint16_t maxLength) const
             {
                 ASSERT(GetEscapeSequenceAction(current) == EscapeSequenceAction::REPLACE);
                 char replacement = current;
@@ -1491,7 +1532,27 @@ namespace Core {
                 case 'b':
                     replacement = '\b';
                     break;
+                case 'u':
+                    replacement = NonPrintableReplacement(current, inputStream, index, maxLength);
+                    break;
                 }
+                return replacement;
+            }
+
+            char NonPrintableReplacement(char current, const char* inputStream, uint16_t& index, uint16_t maxLength) const
+            {
+                char replacement = current;
+                ASSERT((maxLength - index) > 4)
+
+                uint32_t output;
+                uint8_t sucessful = sscanf(&(inputStream[index]), "u%04x", &output);
+
+                // process only 8 bit values
+                if (sucessful && output <= 0xff) {
+                    replacement = output;
+                    index += 4;
+                }
+
                 return replacement;
             }
 

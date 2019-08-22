@@ -517,11 +517,11 @@ namespace Tests {
         TestData data;
         data.key = "key";
         data.keyToPutInJson = "\"" + data.key + "\"";
-        const char rawUnescaped[] = { 'v', 'a', 'l', 'u', 'e', ' ', '"', '\b', '\n', '\f', '\r', '\\', 'u', '0', '0', 'b', '1', '/', '\\', '\0' };
+        const char rawUnescaped[] = { 'v', 'a', 'l', 'u', 'e', ' ', '"', '\b', '\n', '\f', '\r', 0xb1, '/', '\\', '\0' };
         data.value = "value \\\"\\b\\n\\f\\r\\u00b1\\/\\\\";
         data.valueToPutInJson = "\"" + data.value + "\"";
         ExecutePrimitiveJsonTest<Core::JSON::String>(data, true, [rawUnescaped](const Core::JSON::String& v) {
-            EXPECT_TRUE(memcmp(rawUnescaped, v.Value().c_str(), sizeof(rawUnescaped)) == 0);
+            EXPECT_EQ(v.Value(), rawUnescaped);
         });
     }
 
