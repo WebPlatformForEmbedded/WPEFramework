@@ -270,7 +270,7 @@ namespace Core {
             }
         } else {
             if (((_administration->_state.load() & state::OVERWRITE) == 0) && (length > Free()))
-                return Core::ERROR_INVALID_INPUT_LENGTH;
+                return 0;
 
             // A write without reservation, make sure we have the space.
             AssureFreeSpace(length);
