@@ -347,7 +347,7 @@ namespace Core {
         pid_t expectedProcessId = static_cast<pid_t>(0);
 #endif
 
-        if (!(_administration->_state.load() & state::OVERWRITE) && (actualLength > Free()))
+        if (((_administration->_state.load() & state::OVERWRITE) == 0) && (length > Free()))
             return Core::ERROR_INVALID_INPUT_LENGTH;
 
         bool noOtherReservation = atomic_compare_exchange_strong(&(_administration->_reservedPID), &expectedProcessId, processId);
