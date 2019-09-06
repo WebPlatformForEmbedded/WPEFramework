@@ -314,19 +314,19 @@ namespace Core {
             bool reevaluate = false;
             typename SubscriberList::iterator index = m_PendingQueue.begin();
 
-            while ((index != m_PendingQueue.end()) && (infoBlock.ScheduleTime() >= (*index).ScheduleTime())) {
-                ++index;
-            }
+            if (infoBlock.ScheduleTime() >= Time::Now().Ticks()) {
+                while ((index != m_PendingQueue.end()) && (infoBlock.ScheduleTime() >= (*index).ScheduleTime()))
+                    ++index;
 
-            if (index == m_PendingQueue.begin()) {
-                m_PendingQueue.push_front(std::move(infoBlock));
+                if (index == m_PendingQueue.begin()) {
+                    m_PendingQueue.push_front(std::move(infoBlock));
 
-                // If we added the new time up front, retrigger the scheduler.
-                reevaluate = true;
-            } else if (index == m_PendingQueue.end()) {
-                m_PendingQueue.push_back(std::move(infoBlock));
-            } else {
-                m_PendingQueue.insert(index, std::move(infoBlock));
+                    // If we added the new time up front, retrigger the scheduler.
+                    reevaluate = true;
+                } else if (index == m_PendingQueue.end())
+                    m_PendingQueue.push_back(std::move(infoBlock));
+                else
+                    m_PendingQueue.insert(index, std::move(infoBlock));
             }
 
             return (reevaluate);
