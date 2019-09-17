@@ -422,6 +422,29 @@ public:
         _adminLock.Unlock();
     }
 
+    void KeyGet(const string& sessionId, 
+        uint8_t keyId[], uint8_t &keyLength)
+    {
+        _adminLock.Lock();
+
+        keyLength = 0;
+        KeyMap::iterator session(_sessionKeys.find(sessionId));
+
+        if (session != _sessionKeys.end()) {
+
+            KeyList& container(session->second);
+            KeyList::iterator index(container.begin());
+
+            if (index != container.end()) {
+                KeyId paramKey(*index); 
+                keyLength = paramKey.Length();
+                memcpy((void *)keyId, 
+                    (void *)paramKey.Id(), keyLength);
+            }
+        }
+        _adminLock.Unlock();
+    }
+
     virtual uint64_t GetDrmSystemTime(const std::string& keySystem) const override
     {
         ASSERT(_remoteExt && "This method only works on IAccessorOCDMExt implementations.");
@@ -988,8 +1011,17 @@ public:
     {
         _key = status;
 
-        if (_callback != nullptr && _callback->key_update_callback != nullptr)
-            _callback->key_update_callback(this, _userData, nullptr, 0);
+        OpenCDMAccessor* system = OpenCDMAccessor::Instance();
+
+        uint8_t keyId[16];
+        uint8_t keyLength;
+        system->KeyGet(_sessionId, keyId, keyLength);
+        if (_callback != nullptr && _callback->key_update_callback != nullptr) {
+            if (keyLength)
+                _callback->key_update_callback(this, _userData, keyId, keyLength);
+            else
+                _callback->key_update_callback(this, _userData, nullptr, 0);
+        }
     }
 
 
