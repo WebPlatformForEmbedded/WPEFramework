@@ -155,6 +155,7 @@ target_link_libraries(${TARGET}
         PUBLIC
           CompileSettings::CompileSettings
         PRIVATE
+          CompileSettingsDebug::CompileSettingsDebug
           ${CMAKE_DL_LIBS}
 	  ${LIBEXECINFO_LIBRARY}
           LIBRT::LIBRT
@@ -196,7 +197,7 @@ endif()
 # Install ARTIFACTS:
 # ===========================================================================================
 install(
-        TARGETS CompileSettings ${TARGET}  EXPORT ${TARGET}Targets  # for downstream dependencies
+        TARGETS CompileSettings CompileSettingsDebug ${TARGET}  EXPORT ${TARGET}Targets  # for downstream dependencies
         ARCHIVE DESTINATION lib COMPONENT libs      # static lib
         LIBRARY DESTINATION lib COMPONENT libs      # shared lib
         RUNTIME DESTINATION bin COMPONENT libs      # binaries
