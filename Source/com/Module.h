@@ -7,7 +7,7 @@
 
 #include "../core/core.h"
 #include "../tracing/tracing.h"
-#include "Ids.h"
+#include "../com/com.h"
 
 #ifdef __WINDOWS__
 #undef EXTERNAL

@@ -77,7 +77,7 @@ namespace WPEFramework {
             RPC::Data::Input& input(message->Parameters());
 
             // call implementation
-            IAdder* implementation = input.Implementation<IAdder>();
+            IAdder* implementation = RPC::Administrator::GetImplementation<IAdder>(input.InstanceId());
             ASSERT((implementation != nullptr) && "Null IAdder implementation pointer");
             const uint32_t output = implementation->GetValue();
 
@@ -96,7 +96,7 @@ namespace WPEFramework {
             const uint32_t param0 = reader.Number<uint32_t>();
 
             // call implementation
-            IAdder* implementation = input.Implementation<IAdder>();
+            IAdder* implementation = RPC::Administrator::GetImplementation<IAdder>(input.InstanceId());
             ASSERT((implementation != nullptr) && "Null IAdder implementation pointer");
             implementation->Add(param0);
         },
@@ -107,7 +107,7 @@ namespace WPEFramework {
             RPC::Data::Input& input(message->Parameters());
 
             // call implementation
-            IAdder* implementation = input.Implementation<IAdder>();
+            IAdder* implementation = RPC::Administrator::GetImplementation<IAdder>(input.InstanceId());
             ASSERT((implementation != nullptr) && "Null IAdder implementation pointer");
             const uint32_t output = implementation->GetPid();
 

@@ -566,7 +566,7 @@ namespace Core {
                             BufferAlignment(l_Result);
                             return (l_Result);
                         } else {
-                            TRACE_L1("Error on port socket CHMOD. Error %d", __ERRORRESULT__);
+                            TRACE_L1("Error on port %d socket CHMOD. Error %d", localNode.PortNumber(), __ERRORRESULT__);
                         }
                     } else
 #endif
@@ -575,7 +575,7 @@ namespace Core {
                         return (l_Result);
                     }
                 } else {
-                    TRACE_L1("Error on port socket BIND. Error %d", __ERRORRESULT__);
+                    TRACE_L1("Error on port %d socket BIND. Error %d", localNode.PortNumber(), __ERRORRESULT__);
                 }
             } else {
                 BufferAlignment(l_Result);

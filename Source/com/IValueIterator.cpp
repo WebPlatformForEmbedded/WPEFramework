@@ -16,7 +16,7 @@ namespace ProxyStub {
             // virtual bool Next(string& text) = 0;
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            bool valid = message->Parameters().Implementation<RPC::IValueIterator>()->Next(result);
+            bool valid = RPC::Administrator::GetImplementation<RPC::IValueIterator>(message->Parameters().InstanceId())->Next(result);
 
             response.Boolean(valid);
 
@@ -30,7 +30,7 @@ namespace ProxyStub {
             // virtual bool Previous() = 0;
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            bool valid = message->Parameters().Implementation<RPC::IValueIterator>()->Previous(result);
+            bool valid = RPC::Administrator::GetImplementation<RPC::IValueIterator>(message->Parameters().InstanceId())->Previous(result);
 
             response.Boolean(valid);
 
@@ -44,25 +44,25 @@ namespace ProxyStub {
 
             uint32_t position(parameters.Number<uint32_t>());
 
-            message->Parameters().Implementation<RPC::IValueIterator>()->Reset(position);
+            RPC::Administrator::GetImplementation<RPC::IValueIterator>(message->Parameters().InstanceId())->Reset(position);
         },
         [](Core::ProxyType<Core::IPCChannel>& channel VARIABLE_IS_NOT_USED, Core::ProxyType<RPC::InvokeMessage>& message) {
             // virtual bool IsValid() const = 0;
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Boolean(message->Parameters().Implementation<RPC::IValueIterator>()->IsValid());
+            response.Boolean(RPC::Administrator::GetImplementation<RPC::IValueIterator>(message->Parameters().InstanceId())->IsValid());
         },
         [](Core::ProxyType<Core::IPCChannel>& channel VARIABLE_IS_NOT_USED, Core::ProxyType<RPC::InvokeMessage>& message) {
             // virtual uint32_t Count() const = 0;
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Number<uint32_t>(message->Parameters().Implementation<RPC::IValueIterator>()->Count());
+            response.Number<uint32_t>(RPC::Administrator::GetImplementation<RPC::IValueIterator>(message->Parameters().InstanceId())->Count());
         },
         [](Core::ProxyType<Core::IPCChannel>& channel VARIABLE_IS_NOT_USED, Core::ProxyType<RPC::InvokeMessage>& message) {
             // virtual string Current() const = 0;
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Number(message->Parameters().Implementation<RPC::IValueIterator>()->Current());
+            response.Number(RPC::Administrator::GetImplementation<RPC::IValueIterator>(message->Parameters().InstanceId())->Current());
         },
         nullptr
     };
@@ -74,8 +74,8 @@ namespace ProxyStub {
     // -------------------------------------------------------------------------------------------
     class ValueIteratorProxy : public UnknownProxyType<RPC::IValueIterator> {
     public:
-        ValueIteratorProxy(const Core::ProxyType<Core::IPCChannel>& channel, void* implementation, const bool otherSideInformed)
-            : BaseClass(channel, implementation, otherSideInformed)
+        ValueIteratorProxy(const Core::ProxyType<Core::IPCChannel>& channel, RPC::instanceId_t instanceId, const bool otherSideInformed)
+            : BaseClass(channel, instanceId, otherSideInformed)
         {
             TRACE_L1("Constructed ValueIteratorProxy: %p", this);
         }

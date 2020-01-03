@@ -5,6 +5,21 @@
 
 namespace WPEFramework {
 namespace RPC {
+    #define COMRPC_POINTER_LENGTH 32
+
+    #if COMRPC_POINTER_LENGTH == 32
+        typedef uint32_t instanceId_t;
+    #elif COMRPC_POINTER_LENGTH == 64
+        typedef uint64_t instanceId_t;
+        // 128bit cpus might not be kings of the market, but this definition is usefull for debugging :)
+    #elif COMRPC_POINTER_LENGTH == 128 
+        typedef __uint128_t instanceId_t; 
+    #else
+        #warning "COMRPC_POINTER_LENGTH set to unsupported value. Using 32 as default!"
+        typedef uint32_t instanceId_t;
+    #endif
+
+    constexpr instanceId_t EmptyInstance = 0;
 
     namespace Data {
         static const uint16_t IPC_BLOCK_SIZE = 512;
@@ -64,26 +79,25 @@ namespace RPC {
             {
                 _data.Clear();
             }
-            void Set(void* implementation, const uint32_t interfaceId, const uint8_t methodId)
+            void Set(instanceId_t instanceId, const uint32_t interfaceId, const uint8_t methodId)
             {
-                uint16_t result = _data.SetNumber<void*>(0, implementation);
+                uint16_t result = _data.SetNumber<instanceId_t>(0, instanceId);
                 result += _data.SetNumber<uint32_t>(result, interfaceId);
                 _data.SetNumber(result, methodId);
             }
-            template <typename TYPENAME>
-            TYPENAME* Implementation()
+            instanceId_t InstanceId()
             {
-                void* result = nullptr;
+                instanceId_t instanceId = RPC::EmptyInstance;
 
-                _data.GetNumber<void*>(0, result);
+                _data.GetNumber<instanceId_t>(0, instanceId);
 
-                return (static_cast<TYPENAME*>(result));
+                return instanceId;
             }
             uint32_t InterfaceId() const
             {
                 uint32_t result = 0;
 
-                _data.GetNumber<uint32_t>(sizeof(void*), result);
+                _data.GetNumber<uint32_t>(sizeof(instanceId_t), result);
 
                 return (result);
             }
@@ -91,7 +105,7 @@ namespace RPC {
             {
                 uint8_t result = 0;
 
-                _data.GetNumber(sizeof(void*) + sizeof(uint32_t), result);
+                _data.GetNumber(sizeof(instanceId_t) + sizeof(uint32_t), result);
 
                 return (result);
             }
@@ -101,11 +115,11 @@ namespace RPC {
             }
             inline Frame::Writer Writer()
             {
-                return (Frame::Writer(_data, (sizeof(void*) + sizeof(uint32_t) + sizeof(uint8_t))));
+                return (Frame::Writer(_data, (sizeof(instanceId_t) + sizeof(uint32_t) + sizeof(uint8_t))));
             }
             inline const Frame::Reader Reader() const
             {
-                return (Frame::Reader(_data, (sizeof(void*) + sizeof(uint32_t) + sizeof(uint8_t))));
+                return (Frame::Reader(_data, (sizeof(instanceId_t) + sizeof(uint32_t) + sizeof(uint8_t))));
             }
             uint16_t Serialize(uint8_t stream[], const uint16_t maxLength, const uint32_t offset) const
             {
@@ -147,9 +161,9 @@ namespace RPC {
             {
                 return (Frame::Reader(_data, 0));
             }
-            inline void AddImplementation(void* implementation, const uint32_t id)
+            inline void AddInstanceId(instanceId_t instanceId, const uint32_t id)
             {
-                _data.SetNumber<void*>(_data.Size(), implementation);
+                _data.SetNumber<instanceId_t>(_data.Size(), instanceId);
                 _data.SetNumber<uint32_t>(_data.Size(), id);
             }
             inline uint32_t Length() const
@@ -197,7 +211,7 @@ namespace RPC {
         public:
             Init()
                 : _id(0)
-				, _implementation(nullptr)
+				, _instanceId(RPC::EmptyInstance)
                 , _interfaceId(~0)
                 , _exchangeId(~0)
                 , _versionId(0)
@@ -227,7 +241,7 @@ namespace RPC {
             void Set(const uint32_t myId)
             {
                 _exchangeId = ParentId();
-                _implementation = nullptr;
+                _instanceId = RPC::EmptyInstance;
                 _interfaceId = ~0;
                 _versionId = ~0;
                 _id = myId;
@@ -235,22 +249,22 @@ namespace RPC {
                 _className[1] = AQUIRE;
    
             }
-            void Set(const uint32_t myId, const uint32_t interfaceId, void* implementation, const uint32_t exchangeId)
+            void Set(const uint32_t myId, const uint32_t interfaceId, instanceId_t instanceId, const uint32_t exchangeId)
             {
                 _exchangeId = exchangeId;
-                _implementation = implementation;
+                _instanceId = instanceId;
                 _interfaceId = interfaceId;
                 _versionId = 0;
                 _id = myId;
                 _className[0] = '\0';
                 _className[1] = REQUEST;
             }
-            void Set(const uint32_t myId, const uint32_t interfaceId, void* implementation, const type whatKind)
+            void Set(const uint32_t myId, const uint32_t interfaceId, instanceId_t instanceId, const type whatKind)
             {
                 ASSERT((whatKind != AQUIRE) && (whatKind != REQUEST));
 
                 _exchangeId = ParentId();
-                _implementation = implementation;
+                _instanceId = instanceId;
                 _interfaceId = interfaceId;
                 _versionId = 0;
                 _id = myId;
@@ -260,7 +274,7 @@ namespace RPC {
             void Set(const uint32_t myId, const string& className, const uint32_t interfaceId, const uint32_t versionId)
             {
                 _exchangeId = ParentId();
-                _implementation = nullptr;
+                _instanceId = RPC::EmptyInstance;
                 _interfaceId = interfaceId;
                 _versionId = versionId;
                 _id = myId;
@@ -271,9 +285,9 @@ namespace RPC {
             {
                 return (_id);
             }
-            void* Implementation() const
+            instanceId_t InstanceId() const
             {
-                return (_implementation);
+                return (_instanceId);
             }
             uint32_t InterfaceId() const
             {
@@ -294,7 +308,7 @@ namespace RPC {
 
         private:
             uint32_t _id;
-            void* _implementation;
+            instanceId_t _instanceId;
             uint32_t _interfaceId;
             uint32_t _exchangeId;
             uint32_t _versionId;
@@ -320,11 +334,11 @@ namespace RPC {
             {
                 _data.Clear();
             }
-            void Set(void* implementation, const string& proxyStubPath, const string& traceCategories)
+            void Set(instanceId_t instanceId, const string& proxyStubPath, const string& traceCategories)
             {
-                _data.SetNumber<void*>(0, implementation);
-                uint16_t length = _data.SetText(sizeof(void*), proxyStubPath);
-                _data.SetText(sizeof(void*) + length, traceCategories);
+                _data.SetNumber<instanceId_t>(0, instanceId);
+                uint16_t length = _data.SetText(sizeof(instanceId_t), proxyStubPath);
+                _data.SetText(sizeof(instanceId_t) + length, traceCategories);
             }
 			inline bool IsSet() const {
                 return (_data.Size() > 0);
@@ -333,7 +347,7 @@ namespace RPC {
             {
                 string value;
 
-                _data.GetText(sizeof(void*), value);
+                _data.GetText(sizeof(instanceId_t), value);
 
                 return (value);
             }
@@ -341,19 +355,19 @@ namespace RPC {
             {
                 string value;
 
-                _data.GetText(sizeof(void*) + _data.GetText(sizeof(void*), value), value);
+                _data.GetText(sizeof(instanceId_t) + _data.GetText(sizeof(instanceId_t), value), value);
 
                 return (value);
             }
-            void* Implementation() const
+            instanceId_t InstanceId() const
             {
-                void* result = nullptr;
-                _data.GetNumber<void*>(0, result);
-                return (result);
+                instanceId_t instanceId = RPC::EmptyInstance;
+                _data.GetNumber<instanceId_t>(0, instanceId);
+                return (instanceId);
             }
-            void Implementation(void* implementation)
+            void InstanceId(instanceId_t instanceId)
             {
-                _data.SetNumber<void*>(0, implementation);
+                _data.SetNumber<instanceId_t>(0, instanceId);
             }
             uint32_t Length() const
             {

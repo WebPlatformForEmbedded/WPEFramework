@@ -23,17 +23,18 @@ namespace ProxyStubs {
             RPC::Data::Frame::Reader reader(parameters.Reader());
             RPC::Data::Frame::Writer writer(response.Writer());
 
-            IPlugin* implementation(parameters.Implementation<IPlugin>());
+            IPlugin* implementation(RPC::Administrator::GetImplementation<IPlugin>(parameters.InstanceId()));
             string result(_T("Implementation of ProxyStub NOT supplied."));
 
             ASSERT(implementation != nullptr);
 
             if (implementation != nullptr) {
                 ProxyStub::UnknownProxy* proxy = nullptr;
-                IShell* param0_proxy = reader.Number<IShell*>();
+                IShell* param0_proxy = nullptr;
+                RPC::instanceId_t param0_instanceId = reader.Number<RPC::instanceId_t>();
 
-                if (param0_proxy != nullptr) {
-                    proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_proxy, IShell::ID, false, IShell::ID, true);
+                if (param0_instanceId != RPC::EmptyInstance) {
+                    proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_instanceId, IShell::ID, false, IShell::ID, true);
                     param0_proxy = (proxy != nullptr ? proxy->QueryInterface<IShell>() : nullptr);
 
                     ASSERT((param0_proxy != nullptr) && "Failed to create proxy");
@@ -54,16 +55,17 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Reader parameters(message->Parameters().Reader());
             ProxyStub::UnknownProxy* proxy = nullptr;
-            IShell* param0_proxy = message->Parameters().Reader().Number<IShell*>();
+            IShell* param0_proxy = nullptr;
+            RPC::instanceId_t param0_instanceId = message->Parameters().Reader().Number<RPC::instanceId_t>();
 
-            if (param0_proxy != nullptr) {
-                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_proxy, IShell::ID, false, IShell::ID, true);
+            if (param0_instanceId != RPC::EmptyInstance) {
+                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_instanceId, IShell::ID, false, IShell::ID, true);
                 param0_proxy = (proxy != nullptr ? proxy->QueryInterface<IShell>() : nullptr);
 
                 ASSERT((param0_proxy != nullptr) && "Failed to create proxy");
             }
 
-            message->Parameters().Implementation<IPlugin>()->Deinitialize(param0_proxy);
+            RPC::Administrator::GetImplementation<IPlugin>(message->Parameters().InstanceId())->Deinitialize(param0_proxy);
 
             if (param0_proxy != nullptr) {
                 RPC::Administrator::Instance().Release(proxy, message->Response());
@@ -75,7 +77,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IPlugin>()->Information());
+            response.Text(RPC::Administrator::GetImplementation<IPlugin>(message->Parameters().InstanceId())->Information());
         },
         nullptr
     };
@@ -93,13 +95,13 @@ namespace ProxyStubs {
             string URLPath(reader.Text());
             string fileSystemPath(reader.Text());
 
-            message->Parameters().Implementation<IShell>()->EnableWebServer(URLPath, fileSystemPath);
+            RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->EnableWebServer(URLPath, fileSystemPath);
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
             // virtual void DisableWebServer() = 0;
             //
-            message->Parameters().Implementation<IShell>()->DisableWebServer();
+            RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->DisableWebServer();
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -110,7 +112,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->ConfigLine());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->ConfigLine());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -120,7 +122,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->Versions());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Versions());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -130,7 +132,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Boolean(message->Parameters().Implementation<IShell>()->Background());
+            response.Boolean(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Background());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -138,7 +140,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->Accessor());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Accessor());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -146,7 +148,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->WebPrefix());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->WebPrefix());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -154,7 +156,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->Locator());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Locator());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -162,7 +164,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->ClassName());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->ClassName());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -170,7 +172,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->Callsign());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Callsign());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -178,7 +180,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->PersistentPath());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->PersistentPath());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -186,7 +188,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->VolatilePath());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->VolatilePath());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -194,7 +196,15 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->DataPath());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->DataPath());
+        },
+        [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
+            //
+            // virtual string DataPath() const = 0;
+            //
+            RPC::Data::Frame::Writer response(message->Response().Writer());
+
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->SystemPath());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -205,7 +215,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->HashKey());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->HashKey());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -213,7 +223,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Boolean(message->Parameters().Implementation<IShell>()->AutoStart());
+            response.Boolean(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->AutoStart());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -223,9 +233,9 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
 
-            message->Parameters().Implementation<IShell>()->Notify(reader.Text());
+            RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Notify(reader.Text());
         },
-        [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
+        [](Core::ProxyType<Core::IPCChannel>& channel , Core::ProxyType<RPC::InvokeMessage>& message) {
             //
             // Careful, out of order.
             //
@@ -237,7 +247,12 @@ namespace ProxyStubs {
             uint32_t id(parameters.Number<uint32_t>());
             string name(parameters.Text());
 
-            response.Number<void*>(message->Parameters().Implementation<IShell>()->QueryInterfaceByCallsign(id, name));
+            void* output_pointer = RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->QueryInterfaceByCallsign(id, name);
+
+
+            RPC::instanceId_t output = RPC::Administrator::Instance().RegisterInterface(channel, output_pointer, IShell::ID);
+
+            response.Number<RPC::instanceId_t>(output);
         },
         [](Core::ProxyType<Core::IPCChannel>& channel, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -249,16 +264,17 @@ namespace ProxyStubs {
             RPC::Data::Frame::Reader reader(parameters.Reader());
 
             ProxyStub::UnknownProxy* proxy = nullptr;
-            IPlugin::INotification* param0_proxy = reader.Number<IPlugin::INotification*>();
+            IPlugin::INotification* param0_proxy = nullptr;
+            RPC::instanceId_t param0_instanceId = reader.Number<RPC::instanceId_t>();
 
-            if (param0_proxy != nullptr) {
-                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_proxy, IPlugin::INotification::ID, false, IPlugin::INotification::ID, true);
+            if (param0_instanceId != RPC::EmptyInstance) {
+                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_instanceId, IPlugin::INotification::ID, false, IPlugin::INotification::ID, true);
                 param0_proxy = (proxy != nullptr ? proxy->QueryInterface<IPlugin::INotification>() : nullptr);
 
                 ASSERT((param0_proxy != nullptr) && "Failed to create proxy");
             }
 
-            parameters.Implementation<IShell>()->Register(param0_proxy);
+            RPC::Administrator::GetImplementation<IShell>(parameters.InstanceId())->Register(param0_proxy);
 
             if (param0_proxy != nullptr) {
                 RPC::Administrator::Instance().Release(proxy, message->Response());
@@ -274,15 +290,16 @@ namespace ProxyStubs {
             RPC::Data::Frame::Reader reader(parameters.Reader());
 
             ProxyStub::UnknownProxy* proxy = nullptr;
-            IPlugin::INotification* param0_proxy = reader.Number<IPlugin::INotification*>();
+            IPlugin::INotification* param0_proxy = nullptr;
+            RPC::instanceId_t param0_instanceId = reader.Number<RPC::instanceId_t>();
 
-            if (param0_proxy != nullptr) {
-                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_proxy, IPlugin::INotification::ID, false, IPlugin::INotification::ID, true);
+            if (param0_instanceId != RPC::EmptyInstance) {
+                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_instanceId, IPlugin::INotification::ID, false, IPlugin::INotification::ID, true);
                 param0_proxy = (proxy != nullptr ? proxy->QueryInterface<IPlugin::INotification>() : nullptr);
 
                 ASSERT((param0_proxy != nullptr) && "Failed to create proxy");
             }
-            parameters.Implementation<IShell>()->Unregister(param0_proxy);
+            RPC::Administrator::GetImplementation<IShell>(parameters.InstanceId())->Unregister(param0_proxy);
 
             if (param0_proxy != nullptr) {
                 RPC::Administrator::Instance().Release(proxy, message->Response());
@@ -299,7 +316,7 @@ namespace ProxyStubs {
 
             IShell::reason reason(reader.Number<IShell::reason>());
 
-            response.Number<uint32_t>(message->Parameters().Implementation<IShell>()->Activate(reason));
+            response.Number<uint32_t>(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Activate(reason));
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -312,7 +329,7 @@ namespace ProxyStubs {
 
             IShell::reason reason(reader.Number<IShell::reason>());
 
-            response.Number<uint32_t>(message->Parameters().Implementation<IShell>()->Deactivate(reason));
+            response.Number<uint32_t>(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Deactivate(reason));
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -321,7 +338,7 @@ namespace ProxyStubs {
             // virtual state State() const = 0;
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
-            response.Number<IShell::state>(message->Parameters().Implementation<IShell>()->State());
+            response.Number<IShell::state>(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->State());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -330,7 +347,7 @@ namespace ProxyStubs {
             // virtual reason Reason() const = 0;
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
-            response.Number<IShell::reason>(message->Parameters().Implementation<IShell>()->Reason());
+            response.Number<IShell::reason>(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Reason());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -340,7 +357,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->Model());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Model());
         },
         [](Core::ProxyType<Core::IPCChannel>& channel VARIABLE_IS_NOT_USED, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -348,12 +365,13 @@ namespace ProxyStubs {
             //
             // virtual ISubSystem* SubSystems() = 0;
             //
-            ISubSystem* output = message->Parameters().Implementation<IShell>()->SubSystems();
+            ISubSystem* output = RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->SubSystems();
 
             // write return value
             RPC::Data::Frame::Writer writer(message->Response().Writer());
-            writer.Number<ISubSystem*>(output);
-            RPC::Administrator::Instance().RegisterInterface(channel, output);
+
+            RPC::instanceId_t output_instanceId = RPC::Administrator::Instance().RegisterInterface(channel, output);
+            writer.Number<RPC::instanceId_t>(output_instanceId);            
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -361,7 +379,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->ProxyStubPath());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->ProxyStubPath());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -372,7 +390,7 @@ namespace ProxyStubs {
 
             uint8_t version(reader.Number<uint8_t>());
 
-            response.Boolean(message->Parameters().Implementation<IShell>()->IsSupported(version));
+            response.Boolean(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->IsSupported(version));
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -382,7 +400,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->Version());
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Version());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -390,7 +408,7 @@ namespace ProxyStubs {
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Boolean(message->Parameters().Implementation<IShell>()->Resumed());
+            response.Boolean(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->Resumed());
         },
         [](Core::ProxyType<Core::IPCChannel>& /* channel */, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -399,7 +417,7 @@ namespace ProxyStubs {
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
-            response.Text(message->Parameters().Implementation<IShell>()->ConfigSubstitution(reader.Text()));
+            response.Text(RPC::Administrator::GetImplementation<IShell>(message->Parameters().InstanceId())->ConfigSubstitution(reader.Text()));
         },
         nullptr
     };
@@ -418,16 +436,17 @@ namespace ProxyStubs {
             RPC::Data::Frame::Writer writer(message->Response().Writer());
 
             ProxyStub::UnknownProxy* proxy = nullptr;
-            IShell* param0_proxy = reader.Number<IShell*>();
+            IShell* param0_proxy = nullptr;
+            RPC::instanceId_t param0_instanceId = reader.Number<RPC::instanceId_t>();
 
-            if (param0_proxy != nullptr) {
-                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_proxy, IShell::ID, false, IShell::ID, true);
+            if (param0_instanceId != RPC::EmptyInstance) {
+                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_instanceId, IShell::ID, false, IShell::ID, true);
                 param0_proxy = (proxy != nullptr ? proxy->QueryInterface<IShell>() : nullptr);
 
                 ASSERT((param0_proxy != nullptr) && "Failed to create proxy");
             }
 
-            writer.Number<uint32_t>(message->Parameters().Implementation<IStateControl>()->Configure(param0_proxy));
+            writer.Number<uint32_t>(RPC::Administrator::GetImplementation<IStateControl>(message->Parameters().InstanceId())->Configure(param0_proxy));
 
             if (param0_proxy != nullptr) {
                 RPC::Administrator::Instance().Release(proxy, message->Response());
@@ -438,7 +457,7 @@ namespace ProxyStubs {
             // virtual IStateControl::state State() const = 0;
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
-            response.Number<IStateControl::state>(message->Parameters().Implementation<IStateControl>()->State());
+            response.Number<IStateControl::state>(RPC::Administrator::GetImplementation<IStateControl>(message->Parameters().InstanceId())->State());
         },
         [](Core::ProxyType<Core::IPCChannel>& channel VARIABLE_IS_NOT_USED, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -447,7 +466,7 @@ namespace ProxyStubs {
             RPC::Data::Frame::Reader parameters(message->Parameters().Reader());
             RPC::Data::Frame::Writer response(message->Response().Writer());
             IStateControl::command command = parameters.Number<IStateControl::command>();
-            response.Number(message->Parameters().Implementation<IStateControl>()->Request(command));
+            response.Number(RPC::Administrator::GetImplementation<IStateControl>(message->Parameters().InstanceId())->Request(command));
         },
         [](Core::ProxyType<Core::IPCChannel>& channel, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -457,16 +476,17 @@ namespace ProxyStubs {
             RPC::Data::Frame::Reader reader(parameters.Reader());
 
             ProxyStub::UnknownProxy* proxy = nullptr;
-            IStateControl::INotification* param0_proxy = reader.Number<IStateControl::INotification*>();
+            IStateControl::INotification* param0_proxy = nullptr;
+            RPC::instanceId_t param0_instanceId = reader.Number<RPC::instanceId_t>();
 
-            if (param0_proxy != nullptr) {
-                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_proxy, IStateControl::INotification::ID, false, IStateControl::INotification::ID, true);
+            if (param0_instanceId != RPC::EmptyInstance) {
+                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_instanceId, IStateControl::INotification::ID, false, IStateControl::INotification::ID, true);
                 param0_proxy = (proxy != nullptr ? proxy->QueryInterface<IStateControl::INotification>() : nullptr);
 
                 ASSERT((param0_proxy != nullptr) && "Failed to create proxy");
             }
 
-            parameters.Implementation<IStateControl>()->Register(param0_proxy);
+            RPC::Administrator::GetImplementation<IStateControl>(parameters.InstanceId())->Register(param0_proxy);
 
             if (param0_proxy != nullptr) {
                 RPC::Administrator::Instance().Release(proxy, message->Response());
@@ -480,16 +500,17 @@ namespace ProxyStubs {
             RPC::Data::Frame::Reader reader(parameters.Reader());
 
             ProxyStub::UnknownProxy* proxy = nullptr;
-            IStateControl::INotification* param0_proxy = reader.Number<IStateControl::INotification*>();
+            IStateControl::INotification* param0_proxy = nullptr;
+            RPC::instanceId_t param0_instanceId = reader.Number<RPC::instanceId_t>();
 
-            if (param0_proxy != nullptr) {
-                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_proxy, IStateControl::INotification::ID, false, IStateControl::INotification::ID, true);
+            if (param0_instanceId != RPC::EmptyInstance) {
+                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_instanceId, IStateControl::INotification::ID, false, IStateControl::INotification::ID, true);
                 param0_proxy = (proxy != nullptr ? proxy->QueryInterface<IStateControl::INotification>() : nullptr);
 
                 ASSERT((param0_proxy != nullptr) && "Failed to create proxy");
             }
 
-            parameters.Implementation<IStateControl>()->Unregister(param0_proxy);
+            RPC::Administrator::GetImplementation<IStateControl>(parameters.InstanceId())->Unregister(param0_proxy);
 
             if (param0_proxy != nullptr) {
                 RPC::Administrator::Instance().Release(proxy, message->Response());
@@ -510,7 +531,7 @@ namespace ProxyStubs {
             RPC::Data::Frame::Reader parameters(message->Parameters().Reader());
             IStateControl::state newState(parameters.Number<IStateControl::state>());
 
-            message->Parameters().Implementation<IStateControl::INotification>()->StateChange(newState);
+            RPC::Administrator::GetImplementation<IStateControl::INotification>(message->Parameters().InstanceId())->StateChange(newState);
         },
         nullptr
     };
@@ -528,16 +549,17 @@ namespace ProxyStubs {
             RPC::Data::Frame::Reader reader(parameters.Reader());
 
             ProxyStub::UnknownProxy* proxy = nullptr;
-            ISubSystem::INotification* param0_proxy = reader.Number<ISubSystem::INotification*>();
+            ISubSystem::INotification* param0_proxy = nullptr;
+            RPC::instanceId_t param0_instanceId = reader.Number<RPC::instanceId_t>();
 
-            if (param0_proxy != nullptr) {
-                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_proxy, ISubSystem::INotification::ID, false, ISubSystem::INotification::ID, true);
+            if (param0_instanceId != RPC::EmptyInstance) {
+                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_instanceId, ISubSystem::INotification::ID, false, ISubSystem::INotification::ID, true);
                 param0_proxy = (proxy != nullptr ? proxy->QueryInterface<ISubSystem::INotification>() : nullptr);
 
                 ASSERT((param0_proxy != nullptr) && "Failed to create proxy");
             }
 
-            parameters.Implementation<ISubSystem>()->Register(param0_proxy);
+            RPC::Administrator::GetImplementation<ISubSystem>(parameters.InstanceId())->Register(param0_proxy);
 
             if (param0_proxy != nullptr) {
                 RPC::Administrator::Instance().Release(proxy, message->Response());
@@ -551,16 +573,17 @@ namespace ProxyStubs {
             RPC::Data::Frame::Reader reader(parameters.Reader());
 
             ProxyStub::UnknownProxy* proxy = nullptr;
-            ISubSystem::INotification* param0_proxy = reader.Number<ISubSystem::INotification*>();
+            ISubSystem::INotification* param0_proxy = nullptr;
+            RPC::instanceId_t param0_instanceId = reader.Number<RPC::instanceId_t>();
 
-            if (param0_proxy != nullptr) {
-                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_proxy, ISubSystem::INotification::ID, false, ISubSystem::INotification::ID, true);
+            if (param0_instanceId != RPC::EmptyInstance) {
+                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_instanceId, ISubSystem::INotification::ID, false, ISubSystem::INotification::ID, true);
                 param0_proxy = (proxy != nullptr ? proxy->QueryInterface<ISubSystem::INotification>() : nullptr);
 
                 ASSERT((param0_proxy != nullptr) && "Failed to create proxy");
             }
 
-            parameters.Implementation<ISubSystem>()->Unregister(param0_proxy);
+            RPC::Administrator::GetImplementation<ISubSystem>(parameters.InstanceId())->Unregister(param0_proxy);
 
             if (param0_proxy != nullptr) {
                 RPC::Administrator::Instance().Release(proxy, message->Response());
@@ -571,7 +594,7 @@ namespace ProxyStubs {
             // virtual string BuildTreeHash() const = 0;
             //
             RPC::Data::Frame::Writer response(message->Response().Writer());
-            response.Text(message->Parameters().Implementation<ISubSystem>()->BuildTreeHash());
+            response.Text(RPC::Administrator::GetImplementation<ISubSystem>(message->Parameters().InstanceId())->BuildTreeHash());
         },
         [](Core::ProxyType<Core::IPCChannel>& channel, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -583,16 +606,17 @@ namespace ProxyStubs {
             ISubSystem::subsystem eventType = reader.Number<ISubSystem::subsystem>();
 
             ProxyStub::UnknownProxy* proxy = nullptr;
-            Core::IUnknown* param0_proxy = reader.Number<Core::IUnknown*>();
+            Core::IUnknown* param0_proxy = nullptr;
+            RPC::instanceId_t param0_instanceId = reader.Number<RPC::instanceId_t>();
 
-            if (param0_proxy != nullptr) {
-                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_proxy, Core::IUnknown::ID, false, Core::IUnknown::ID, true);
+            if (param0_instanceId != RPC::EmptyInstance) {
+                proxy = RPC::Administrator::Instance().ProxyInstance(channel, param0_instanceId, Core::IUnknown::ID, false, Core::IUnknown::ID, true);
                 param0_proxy = (proxy != nullptr ? proxy->QueryInterface<Core::IUnknown>() : nullptr);
 
                 ASSERT((param0_proxy != nullptr) && "Failed to create proxy");
             }
 
-            parameters.Implementation<ISubSystem>()->Set(eventType, param0_proxy);
+            RPC::Administrator::GetImplementation<ISubSystem>(parameters.InstanceId())->Set(eventType, param0_proxy);
 
             if (param0_proxy != nullptr) {
                 RPC::Administrator::Instance().Release(proxy, message->Response());
@@ -607,7 +631,9 @@ namespace ProxyStubs {
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
             ISubSystem::subsystem eventType = reader.Number<ISubSystem::subsystem>();
-            response.Number<const Core::IUnknown*>(parameters.Implementation<ISubSystem>()->Get(eventType));
+            const Core::IUnknown* output_pointer = RPC::Administrator::GetImplementation<ISubSystem>(parameters.InstanceId())->Get(eventType);
+            RPC::instanceId_t output = RPC::Administrator::GetInstanceId(reinterpret_cast<const void*>(output_pointer));
+            response.Number<RPC::instanceId_t>(output);
         },
         [](Core::ProxyType<Core::IPCChannel>& channel VARIABLE_IS_NOT_USED, Core::ProxyType<RPC::InvokeMessage>& message) {
             //
@@ -618,7 +644,7 @@ namespace ProxyStubs {
             RPC::Data::Frame::Writer response(message->Response().Writer());
 
             ISubSystem::subsystem eventType = reader.Number<ISubSystem::subsystem>();
-            response.Boolean(parameters.Implementation<ISubSystem>()->IsActive(eventType));
+            response.Boolean(RPC::Administrator::GetImplementation<ISubSystem>(parameters.InstanceId())->IsActive(eventType));
         },
         nullptr
 
@@ -633,7 +659,7 @@ namespace ProxyStubs {
             //
             // virtual void Updated() = 0;
             //
-            message->Parameters().Implementation<ISubSystem::INotification>()->Updated();
+            RPC::Administrator::GetImplementation<ISubSystem::INotification>(message->Parameters().InstanceId())->Updated();
         },
         nullptr
     };
@@ -651,8 +677,8 @@ namespace ProxyStubs {
     // -------------------------------------------------------------------------------------------
     class PluginProxy : public ProxyStub::UnknownProxyType<IPlugin> {
     public:
-        PluginProxy(const Core::ProxyType<Core::IPCChannel>& channel, void* implementation, const bool otherSideInformed)
-            : BaseClass(channel, implementation, otherSideInformed)
+        PluginProxy(const Core::ProxyType<Core::IPCChannel>& channel, RPC::instanceId_t instanceId, const bool otherSideInformed)
+            : BaseClass(channel, instanceId, otherSideInformed)
         {
         }
         virtual ~PluginProxy()
@@ -670,7 +696,9 @@ namespace ProxyStubs {
             string result;
             IPCMessage newMessage(BaseClass::Message(0));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
-            writer.Number<IShell*>(service);
+
+            RPC::instanceId_t service_instanceId = RPC::Administrator::GetInstanceId(service);
+            writer.Number<RPC::instanceId_t>(service_instanceId);
 
             if (Invoke(newMessage) == Core::ERROR_NONE) {
                 RPC::Data::Frame::Reader reader(newMessage->Response().Reader());
@@ -684,7 +712,9 @@ namespace ProxyStubs {
         {
             IPCMessage newMessage(BaseClass::Message(1));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
-            writer.Number<IShell*>(service);
+
+            RPC::instanceId_t service_instanceId = RPC::Administrator::GetInstanceId(service);
+            writer.Number<RPC::instanceId_t>(service_instanceId);
 
             if ((Invoke(newMessage) == Core::ERROR_NONE) && (newMessage->Response().Length() > 0)) {
                 RPC::Data::Frame::Reader reader(newMessage->Response().Reader());
@@ -707,8 +737,8 @@ namespace ProxyStubs {
 
     class ShellProxy : public ProxyStub::UnknownProxyType<IShell> {
     public:
-        ShellProxy(const Core::ProxyType<Core::IPCChannel>& channel, void* implementation, const bool otherSideInformed)
-            : BaseClass(channel, implementation, otherSideInformed)
+        ShellProxy(const Core::ProxyType<Core::IPCChannel>& channel, RPC::instanceId_t instanceId, const bool otherSideInformed)
+            : BaseClass(channel, instanceId, otherSideInformed)
         {
         }
         virtual ~ShellProxy()
@@ -730,6 +760,7 @@ namespace ProxyStubs {
         // virtual string PersistentPath() const = 0;
         // virtual string VolatilePath() const = 0;
         // virtual string DataPath() const = 0;
+        // virtual string SystemPath() const = 0;
         // virtual string HashKey() const = 0;
         // virtual bool AutoStart() const = 0;
         // virtual bool Resumed() const = 0;
@@ -880,7 +911,8 @@ namespace ProxyStubs {
 
             return (result);
         }
-        virtual string HashKey() const override
+
+        virtual string SystemPath() const override
         {
             string result;
             IPCMessage newMessage(BaseClass::Message(13));
@@ -891,10 +923,22 @@ namespace ProxyStubs {
 
             return (result);
         }
+
+        virtual string HashKey() const override
+        {
+            string result;
+            IPCMessage newMessage(BaseClass::Message(14));
+
+            if (Invoke(newMessage) == Core::ERROR_NONE) {
+                result = newMessage->Response().Reader().Text();
+            }
+
+            return (result);
+        }
         virtual bool AutoStart() const override
         {
             bool result = false;
-            IPCMessage newMessage(BaseClass::Message(14));
+            IPCMessage newMessage(BaseClass::Message(15));
 
             if (Invoke(newMessage) == Core::ERROR_NONE) {
                 result = newMessage->Response().Reader().Boolean();
@@ -904,7 +948,7 @@ namespace ProxyStubs {
         }
         virtual void Notify(const string& message) override
         {
-            IPCMessage newMessage(BaseClass::Message(15));
+            IPCMessage newMessage(BaseClass::Message(16));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
 
             writer.Text(message);
@@ -914,23 +958,25 @@ namespace ProxyStubs {
         virtual void* QueryInterfaceByCallsign(const uint32_t id, const string& name) override
         {
             void* result = nullptr;
-            IPCMessage newMessage(BaseClass::Message(16));
+            IPCMessage newMessage(BaseClass::Message(17));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
 
             writer.Number(id);
             writer.Text(name);
 
             if (Invoke(newMessage) == Core::ERROR_NONE) {
-                result = Interface(newMessage->Response().Reader().Number<void*>(), id);
+                result = Interface(newMessage->Response().Reader().Number<RPC::instanceId_t>(), id);
             }
 
             return (result);
         }
         virtual void Register(IPlugin::INotification* sink) override
         {
-            IPCMessage newMessage(BaseClass::Message(17));
+            IPCMessage newMessage(BaseClass::Message(18));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
-            writer.Number<IPlugin::INotification*>(sink);
+
+            RPC::instanceId_t sink_instanceId = RPC::Administrator::GetInstanceId(sink);
+            writer.Number<RPC::instanceId_t>(sink_instanceId);
 
             if ((Invoke(newMessage) == Core::ERROR_NONE) && (newMessage->Response().Length() > 0)) {
                 RPC::Data::Frame::Reader reader(newMessage->Response().Reader());
@@ -939,9 +985,11 @@ namespace ProxyStubs {
         }
         virtual void Unregister(IPlugin::INotification* sink) override
         {
-            IPCMessage newMessage(BaseClass::Message(18));
+            IPCMessage newMessage(BaseClass::Message(19));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
-            writer.Number<IPlugin::INotification*>(sink);
+
+            RPC::instanceId_t sink_instanceId = RPC::Administrator::GetInstanceId(sink);
+            writer.Number<RPC::instanceId_t>(sink_instanceId);
 
             if ((Invoke(newMessage) == Core::ERROR_NONE) && (newMessage->Response().Length() > 0)) {
                 RPC::Data::Frame::Reader reader(newMessage->Response().Reader());
@@ -951,7 +999,7 @@ namespace ProxyStubs {
         virtual uint32_t Activate(const IShell::reason theReason) override
         {
             uint32_t result = ~0;
-            IPCMessage newMessage(BaseClass::Message(19));
+            IPCMessage newMessage(BaseClass::Message(20));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
 
             writer.Number<IShell::reason>(theReason);
@@ -964,7 +1012,7 @@ namespace ProxyStubs {
         virtual uint32_t Deactivate(const IShell::reason theReason) override
         {
             uint32_t result = ~0;
-            IPCMessage newMessage(BaseClass::Message(20));
+            IPCMessage newMessage(BaseClass::Message(21));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
 
             writer.Number<IShell::reason>(theReason);
@@ -978,7 +1026,7 @@ namespace ProxyStubs {
         virtual IShell::state State() const override
         {
             IShell::state result = IShell::state::DESTROYED;
-            IPCMessage newMessage(BaseClass::Message(21));
+            IPCMessage newMessage(BaseClass::Message(22));
             if (Invoke(newMessage) == Core::ERROR_NONE) {
                 result = newMessage->Response().Reader().Number<IShell::state>();
             }
@@ -989,7 +1037,7 @@ namespace ProxyStubs {
         {
             IShell::reason result = IShell::reason::FAILURE;
 
-            IPCMessage newMessage(BaseClass::Message(22));
+            IPCMessage newMessage(BaseClass::Message(23));
             if (Invoke(newMessage) == Core::ERROR_NONE) {
                 result = newMessage->Response().Reader().Number<IShell::reason>();
             }
@@ -999,7 +1047,7 @@ namespace ProxyStubs {
         virtual string Model() const override
         {
             string result;
-            IPCMessage newMessage(BaseClass::Message(23));
+            IPCMessage newMessage(BaseClass::Message(24));
 
             if (Invoke(newMessage) == Core::ERROR_NONE) {
                 result = newMessage->Response().Reader().Text();
@@ -1010,17 +1058,17 @@ namespace ProxyStubs {
         virtual ISubSystem* SubSystems() override
         {
             ISubSystem* result = nullptr;
-            IPCMessage newMessage(BaseClass::Message(24));
+            IPCMessage newMessage(BaseClass::Message(25));
 
             if (Invoke(newMessage) == Core::ERROR_NONE) {
-                result = reinterpret_cast<ISubSystem*>(Interface(newMessage->Response().Reader().Number<void*>(), ISubSystem::ID));
+                result = reinterpret_cast<ISubSystem*>(Interface(newMessage->Response().Reader().Number<RPC::instanceId_t>(), ISubSystem::ID));
             }
             return (result);
         }
         virtual string ProxyStubPath() const override
         {
             string result;
-            IPCMessage newMessage(BaseClass::Message(25));
+            IPCMessage newMessage(BaseClass::Message(26));
 
             if (Invoke(newMessage) == Core::ERROR_NONE) {
                 result = newMessage->Response().Reader().Text();
@@ -1031,7 +1079,7 @@ namespace ProxyStubs {
         virtual bool IsSupported(const uint8_t version) const override
         {
             bool result = false;
-            IPCMessage newMessage(BaseClass::Message(26));
+            IPCMessage newMessage(BaseClass::Message(27));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
 
             writer.Number<uint8_t>(version);
@@ -1044,7 +1092,7 @@ namespace ProxyStubs {
         virtual string Version() const override
         {
             string result;
-            IPCMessage newMessage(BaseClass::Message(27));
+            IPCMessage newMessage(BaseClass::Message(28));
 
             if (Invoke(newMessage) == Core::ERROR_NONE) {
                 result = newMessage->Response().Reader().Text();
@@ -1055,7 +1103,7 @@ namespace ProxyStubs {
         virtual bool Resumed() const override
         {
             bool result = false;
-            IPCMessage newMessage(BaseClass::Message(28));
+            IPCMessage newMessage(BaseClass::Message(29));
 
             if (Invoke(newMessage) == Core::ERROR_NONE) {
                 result = newMessage->Response().Reader().Boolean();
@@ -1065,7 +1113,7 @@ namespace ProxyStubs {
         }
         virtual string ConfigSubstitution(const string& input) const override
         {
-            IPCMessage newMessage(BaseClass::Message(29));
+            IPCMessage newMessage(BaseClass::Message(30));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
 
             writer.Text(input);
@@ -1089,8 +1137,8 @@ namespace ProxyStubs {
 
     class StateControlProxy : public ProxyStub::UnknownProxyType<IStateControl> {
     public:
-        StateControlProxy(const Core::ProxyType<Core::IPCChannel>& channel, void* implementation, const bool otherSideInformed)
-            : BaseClass(channel, implementation, otherSideInformed)
+        StateControlProxy(const Core::ProxyType<Core::IPCChannel>& channel, RPC::instanceId_t instanceId, const bool otherSideInformed)
+            : BaseClass(channel, instanceId, otherSideInformed)
         {
         }
         virtual ~StateControlProxy()
@@ -1109,7 +1157,10 @@ namespace ProxyStubs {
             uint32_t result = ~0;
             IPCMessage newMessage(BaseClass::Message(0));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
-            writer.Number<IShell*>(service);
+
+            RPC::instanceId_t service_instanceId = RPC::Administrator::GetInstanceId(service);
+            writer.Number<RPC::instanceId_t>(service_instanceId);
+
             if (Invoke(newMessage) == Core::ERROR_NONE) {
                 result = newMessage->Response().Reader().Number<uint32_t>();
             }
@@ -1141,7 +1192,10 @@ namespace ProxyStubs {
         {
             IPCMessage newMessage(BaseClass::Message(3));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
-            writer.Number<IStateControl::INotification*>(notification);
+
+            RPC::instanceId_t notification_instanceId = RPC::Administrator::GetInstanceId(notification);
+            writer.Number<RPC::instanceId_t>(notification_instanceId);
+
             if ((Invoke(newMessage) == Core::ERROR_NONE) && (newMessage->Response().Length() > 0)) {
                 RPC::Data::Frame::Reader reader(newMessage->Response().Reader());
                 Complete(reader);
@@ -1151,7 +1205,10 @@ namespace ProxyStubs {
         {
             IPCMessage newMessage(BaseClass::Message(4));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
-            writer.Number<IStateControl::INotification*>(notification);
+
+            RPC::instanceId_t notification_instanceId = RPC::Administrator::GetInstanceId(notification);
+            writer.Number<RPC::instanceId_t>(notification_instanceId);
+
             if ((Invoke(newMessage) == Core::ERROR_NONE) && (newMessage->Response().Length() > 0)) {
                 RPC::Data::Frame::Reader reader(newMessage->Response().Reader());
                 Complete(reader);
@@ -1161,8 +1218,8 @@ namespace ProxyStubs {
 
     class StateControlNotificationProxy : public ProxyStub::UnknownProxyType<IStateControl::INotification> {
     public:
-        StateControlNotificationProxy(const Core::ProxyType<Core::IPCChannel>& channel, void* implementation, const bool otherSideInformed)
-            : BaseClass(channel, implementation, otherSideInformed)
+        StateControlNotificationProxy(const Core::ProxyType<Core::IPCChannel>& channel, RPC::instanceId_t instanceId, const bool otherSideInformed)
+            : BaseClass(channel, instanceId, otherSideInformed)
         {
         }
         virtual ~StateControlNotificationProxy()
@@ -1183,8 +1240,8 @@ namespace ProxyStubs {
 
     class SubSystemProxy : public ProxyStub::UnknownProxyType<ISubSystem> {
     public:
-        SubSystemProxy(const Core::ProxyType<Core::IPCChannel>& channel, void* implementation, const bool otherSideInformed)
-            : BaseClass(channel, implementation, otherSideInformed)
+        SubSystemProxy(const Core::ProxyType<Core::IPCChannel>& channel, RPC::instanceId_t instanceId, const bool otherSideInformed)
+            : BaseClass(channel, instanceId, otherSideInformed)
         {
         }
         virtual ~SubSystemProxy()
@@ -1203,7 +1260,10 @@ namespace ProxyStubs {
         {
             IPCMessage newMessage(BaseClass::Message(0));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
-            writer.Number<ISubSystem::INotification*>(notification);
+
+            RPC::instanceId_t notification_instanceId = RPC::Administrator::GetInstanceId(notification);
+            writer.Number<RPC::instanceId_t>(notification_instanceId);
+
             if ((Invoke(newMessage) == Core::ERROR_NONE) && (newMessage->Response().Length() > 0)) {
                 RPC::Data::Frame::Reader reader(newMessage->Response().Reader());
                 Complete(reader);
@@ -1213,7 +1273,10 @@ namespace ProxyStubs {
         {
             IPCMessage newMessage(BaseClass::Message(1));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
-            writer.Number<ISubSystem::INotification*>(notification);
+
+            RPC::instanceId_t notification_instanceId = RPC::Administrator::GetInstanceId(notification);
+            writer.Number<RPC::instanceId_t>(notification_instanceId);
+
             if ((Invoke(newMessage) == Core::ERROR_NONE) && (newMessage->Response().Length() > 0)) {
                 RPC::Data::Frame::Reader reader(newMessage->Response().Reader());
                 Complete(reader);
@@ -1233,7 +1296,10 @@ namespace ProxyStubs {
             IPCMessage newMessage(BaseClass::Message(3));
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
             writer.Number<ISubSystem::subsystem>(type);
-            writer.Number<Core::IUnknown*>(information);
+            
+            RPC::instanceId_t information_instanceId = RPC::Administrator::GetInstanceId(information);
+            writer.Number<RPC::instanceId_t>(information_instanceId);
+
             if ((Invoke(newMessage) == Core::ERROR_NONE) && (newMessage->Response().Length() > 0)) {
                 RPC::Data::Frame::Reader reader(newMessage->Response().Reader());
                 Complete(reader);
@@ -1246,7 +1312,7 @@ namespace ProxyStubs {
             RPC::Data::Frame::Writer writer(newMessage->Parameters().Writer());
             writer.Number<ISubSystem::subsystem>(type);
             if (Invoke(newMessage) == Core::ERROR_NONE) {
-                result = reinterpret_cast<Core::IUnknown*>(Interface(newMessage->Response().Reader().Number<void*>(), Core::IUnknown::ID));
+                result = reinterpret_cast<Core::IUnknown*>(Interface(newMessage->Response().Reader().Number<RPC::instanceId_t>(), Core::IUnknown::ID));
             }
             return (result);
         }
@@ -1265,8 +1331,8 @@ namespace ProxyStubs {
 
     class SubSystemNotificationProxy : public ProxyStub::UnknownProxyType<ISubSystem::INotification> {
     public:
-        SubSystemNotificationProxy(const Core::ProxyType<Core::IPCChannel>& channel, void* implementation, const bool otherSideInformed)
-            : BaseClass(channel, implementation, otherSideInformed)
+        SubSystemNotificationProxy(const Core::ProxyType<Core::IPCChannel>& channel, RPC::instanceId_t instanceId, const bool otherSideInformed)
+            : BaseClass(channel, instanceId, otherSideInformed)
         {
         }
         virtual ~SubSystemNotificationProxy()

@@ -24,13 +24,13 @@ namespace RPC {
         return (systemAdministrator);
     }
 
-    void Administrator::AddRef(void* impl, const uint32_t interfaceId)
+    void Administrator::AddRef(instanceId_t instanceId, const uint32_t interfaceId)
     {
         // stub are loaded before any action is taken and destructed if the process closes down, so no need to lock..
         std::map<uint32_t, ProxyStub::UnknownStub*>::iterator index(_stubs.find(interfaceId));
 
         if (index != _stubs.end()) {
-            Core::IUnknown* implementation(index->second->Convert(impl));
+            Core::IUnknown* implementation(index->second->Convert(GetImplementation(instanceId)));
 
             ASSERT(implementation != nullptr);
 
@@ -43,13 +43,13 @@ namespace RPC {
         }
     }
 
-    void Administrator::Release(void* impl, const uint32_t interfaceId)
+    void Administrator::Release(instanceId_t instanceId, const uint32_t interfaceId)
     {
         // stub are loaded before any action is taken and destructed if the process closes down, so no need to lock..
         std::map<uint32_t, ProxyStub::UnknownStub*>::iterator index(_stubs.find(interfaceId));
 
         if (index != _stubs.end()) {
-            Core::IUnknown* implementation(index->second->Convert(impl));
+            Core::IUnknown* implementation(index->second->Convert(GetImplementation(instanceId)));
 
             ASSERT(implementation != nullptr);
 
@@ -65,9 +65,9 @@ namespace RPC {
     void Administrator::Release(ProxyStub::UnknownProxy* proxy, Data::Output& response)
     {
         if (proxy->ShouldAddRefRemotely()) {
-            response.AddImplementation(proxy->Implementation(), proxy->InterfaceId());
+            response.AddInstanceId(proxy->InstanceId(), proxy->InterfaceId());
         } else if (proxy->ShouldReleaseRemotely()) {
-            response.AddImplementation(proxy->Implementation(), proxy->InterfaceId() | 0x80000000);
+            response.AddInstanceId(proxy->InstanceId(), proxy->InterfaceId() | 0x80000000);
         } else {
             proxy->ClearCache();
         }
@@ -140,7 +140,7 @@ namespace RPC {
 
         _adminLock.Unlock();
     }
-    void* Administrator::ProxyFind(const Core::ProxyType<Core::IPCChannel>& channel, void* impl, const uint32_t id, const uint32_t interfaceId)
+    void* Administrator::ProxyFind(const Core::ProxyType<Core::IPCChannel>& channel, instanceId_t instanceId, const uint32_t id, const uint32_t interfaceId)
     {
         void* result = nullptr;
 
@@ -150,7 +150,7 @@ namespace RPC {
 
         if (index != _channelProxyMap.end()) {
             ProxyList::iterator entry(index->second.begin());
-            while ((entry != index->second.end()) && (((*entry)->InterfaceId() != id) || ((*entry)->Implementation() != impl))) {
+            while ((entry != index->second.end()) && (((*entry)->InterfaceId() != id) || ((*entry)->InstanceId() != instanceId))) {
                 entry++;
             }
             if (entry != index->second.end()) {
@@ -163,11 +163,11 @@ namespace RPC {
         return (result);
     }
 
-    ProxyStub::UnknownProxy* Administrator::ProxyInstance(const Core::ProxyType<Core::IPCChannel>& channel, void* impl, const uint32_t id, const bool refCounted, const uint32_t interfaceId, const bool piggyBack)
+    ProxyStub::UnknownProxy* Administrator::ProxyInstance(const Core::ProxyType<Core::IPCChannel>& channel, instanceId_t instanceId, const uint32_t id, const bool refCounted, const uint32_t interfaceId, const bool piggyBack)
     {
         ProxyStub::UnknownProxy* result = nullptr;
 
-        if (impl != nullptr) {
+        if (instanceId != RPC::EmptyInstance) {
 
             _adminLock.Lock();
 
@@ -175,7 +175,7 @@ namespace RPC {
 
             if (index != _channelProxyMap.end()) {
                 ProxyList::iterator entry(index->second.begin());
-                while ((entry != index->second.end()) && (((*entry)->InterfaceId() != id) || ((*entry)->Implementation() != impl))) {
+                while ((entry != index->second.end()) && (((*entry)->InterfaceId() != id) || ((*entry)->InstanceId() != instanceId))) {
                     entry++;
                 }
                 if (entry != index->second.end()) {
@@ -198,7 +198,7 @@ namespace RPC {
 
                 if (index != _proxy.end()) {
 
-                    result = index->second->CreateProxy(channel, impl, refCounted);
+                    result = index->second->CreateProxy(channel, instanceId, refCounted);
 
                     ASSERT(result != nullptr);
 
@@ -221,18 +221,19 @@ namespace RPC {
         return (result);
     }
 
-    void* Administrator::ProxyInstanceQuery(const Core::ProxyType<Core::IPCChannel>& channel, void* impl, const uint32_t id, const bool refCounted, const uint32_t interfaceId, const bool piggyBack)
+    void* Administrator::ProxyInstanceQuery(const Core::ProxyType<Core::IPCChannel>& channel, instanceId_t instanceId, const uint32_t id, const bool refCounted, const uint32_t interfaceId, const bool piggyBack)
     {
         void* result = nullptr;
-        ProxyStub::UnknownProxy* proxyStub = ProxyInstance(channel, impl, id, refCounted, interfaceId, piggyBack);
+        ProxyStub::UnknownProxy* proxyStub = ProxyInstance(channel, instanceId, id, refCounted, interfaceId, piggyBack);
         if (proxyStub != nullptr) {
             result = proxyStub->QueryInterface(interfaceId);
         }
         return (result);
     }
 
-    void Administrator::RegisterInterface(Core::ProxyType<Core::IPCChannel>& channel, Core::IUnknown* reference, void* rawImplementation, const uint32_t id)
+    instanceId_t Administrator::RegisterInterface(Core::ProxyType<Core::IPCChannel>& channel, Core::IUnknown* reference, void* rawImplementation, const uint32_t id)
     {
+        RPC::instanceId_t result = EmptyInstance;
         ReferenceMap::iterator index = _channelReferenceMap.find(channel.operator->());
 
         if (index == _channelReferenceMap.end()) {
@@ -247,16 +248,20 @@ namespace RPC {
 
             if (element != index->second.end()) {
                 element->Increment();
-                rawImplementation = nullptr;
+                result = GetInstanceId(element->Implementation()); 
             }
         }
 
-        if (rawImplementation != nullptr) {
+        if (rawImplementation != nullptr && result == EmptyInstance) {
             index->second.emplace_back(
                 reference,
                 rawImplementation,
                 id);
+
+            result = GetInstanceId(rawImplementation);
         }
+
+        return result;
     }
 
     Core::IUnknown* Administrator::Convert(void* rawImplementation, const uint32_t id) 

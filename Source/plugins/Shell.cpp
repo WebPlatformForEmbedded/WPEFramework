@@ -64,6 +64,7 @@ namespace PluginHost
             , Priority(0)
             , OutOfProcess(true)
             , Mode(ModeType::LOCAL)
+            , RemoteAddress("")
             , Configuration(false)
         {
             Add(_T("locator"), &Locator);
@@ -73,6 +74,7 @@ namespace PluginHost
             Add(_T("priority"), &Priority);
             Add(_T("outofprocess"), &OutOfProcess);
             Add(_T("mode"), &Mode);
+            Add(_T("remoteaddress"), &RemoteAddress);
             Add(_T("configuration"), &Configuration);
         }
         Object(const IShell* info)
@@ -83,6 +85,7 @@ namespace PluginHost
             , Priority(0)
             , OutOfProcess(true)
             , Mode(ModeType::LOCAL)
+            , RemoteAddress()
             , Configuration(false)
         {
             Add(_T("locator"), &Locator);
@@ -92,6 +95,7 @@ namespace PluginHost
             Add(_T("priority"), &Priority);
             Add(_T("outofprocess"), &OutOfProcess);
             Add(_T("mode"), &Mode);
+            Add(_T("remoteaddress"), &RemoteAddress);
             Add(_T("configuration"), &Configuration);
 
             RootObject config;
@@ -124,6 +128,7 @@ namespace PluginHost
             , Priority(copy.Priority)
             , OutOfProcess(true)
             , Mode(copy.Mode)
+            , RemoteAddress(copy.RemoteAddress)
             , Configuration(copy.Configuration)
         {
             Add(_T("locator"), &Locator);
@@ -133,6 +138,7 @@ namespace PluginHost
             Add(_T("priority"), &Priority);
             Add(_T("outofprocess"), &OutOfProcess);
             Add(_T("mode"), &Mode);
+            Add(_T("remoteaddress"), &RemoteAddress);
             Add(_T("configuration"), &Configuration);
         }
         virtual ~Object()
@@ -149,6 +155,7 @@ namespace PluginHost
             Priority = RHS.Priority;
             OutOfProcess = RHS.OutOfProcess;
             Mode = RHS.Mode;
+            RemoteAddress = RHS.RemoteAddress;
             Configuration = RHS.Configuration;
 
             return (*this);
@@ -178,6 +185,7 @@ namespace PluginHost
         Core::JSON::DecSInt8 Priority;
         Core::JSON::Boolean OutOfProcess;
         Core::JSON::EnumType<ModeType> Mode; 
+        Core::JSON::String RemoteAddress;
         Core::JSON::String Configuration; 
     };
 
@@ -222,6 +230,7 @@ namespace PluginHost
                 if (locator.empty() == true) {
                     locator = Locator();
                 }
+
                 RPC::Object definition(Callsign(), locator,
                     className,
                     interface,
@@ -231,6 +240,7 @@ namespace PluginHost
                     rootObject.Threads.Value(),
                     rootObject.Priority.Value(),
                     rootObject.HostType(), 
+                    rootObject.RemoteAddress.Value(),
                     rootObject.Configuration.Value());
 
                 result = handler->Instantiate(definition, waitTime, pid, ClassName(), Callsign());

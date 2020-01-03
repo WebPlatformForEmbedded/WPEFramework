@@ -5,6 +5,7 @@
 
 // ---- Include local include files ----
 #include "Module.h"
+#include "../com/Ids.h"
 
 namespace WPEFramework {
 namespace Trace {

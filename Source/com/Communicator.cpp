@@ -2,6 +2,8 @@
 
 #include <limits>
 #include <memory>
+#include "interfaces/IRemoteInvocation.h"
+
 
 namespace WPEFramework {
 namespace RPC {
@@ -123,6 +125,7 @@ namespace RPC {
         Core::Process _process;
     };
 
+
 #ifdef PROCESSCONTAINERS_ENABLED
 
     class ContainerClosingInfo : public ClosingInfo {
@@ -239,18 +242,18 @@ namespace RPC {
         if (_channel.IsValid() == true) {
             Core::ProxyType<RPC::AnnounceMessage> message(AnnounceMessageFactory.Element());
 
-            TRACE_L1("Aquiring object through RPC: %s, 0x%04X [%d]", className.c_str(), interfaceId, RemoteId());
+            TRACE_L1("Aquiring object through RPC: %s, 0x%04X [%s]", className.c_str(), interfaceId, RemoteId().c_str());
 
             message->Parameters().Set(_id, className, interfaceId, version);
 
             uint32_t feedback = _channel->Invoke(message, waitTime);
 
             if (feedback == Core::ERROR_NONE) {
-                void* implementation = message->Response().Implementation();
+                RPC::instanceId_t instanceId = message->Response().InstanceId();
 
-                if (implementation != nullptr) {
+                if (instanceId != RPC::EmptyInstance) {
                     // From what is returned, we need to create a proxy
-                    ProxyStub::UnknownProxy* instance = RPC::Administrator::Instance().ProxyInstance(Core::ProxyType<Core::IPCChannel>(_channel), implementation, interfaceId, true, interfaceId, false);
+                    ProxyStub::UnknownProxy* instance = RPC::Administrator::Instance().ProxyInstance(Core::ProxyType<Core::IPCChannel>(_channel), instanceId, interfaceId, true, interfaceId, false);
                     result = (instance != nullptr ? instance->QueryInterface(interfaceId) : nullptr);
                 }
             }
@@ -264,9 +267,24 @@ namespace RPC {
         Close();
     }
 
-    /* virtual */ uint32_t Communicator::RemoteConnection::RemoteId() const
+    /* virtual */ string Communicator::RemoteConnection::RemoteId() const
     {
-        return (_remoteId);
+        return _channel->Source().RemoteId();
+    }
+
+    /* virtual */ string Communicator::RemoteConnection::LocalId() const
+    {
+        return _channel->Source().LocalId();
+    }
+
+    /* virtual */ Communicator::RemoteConnection::Type Communicator::RemoteConnection::ConnectionType() const
+    {
+        return Local;
+    }
+
+    /* virtual */ uint32_t Communicator::RemoteConnection::ProcessId() const
+    {
+        return _processId;
     }
 
     /* virtual */  string Communicator::MonitorableRemoteProcess::Callsign() const 
@@ -296,9 +314,9 @@ namespace RPC {
         }
     }
 
-    uint32_t Communicator::LocalRemoteProcess::RemoteId() const
+    uint32_t Communicator::LocalRemoteProcess::ProcessId() const
     {
-        return (_id);
+        return _id;
     }
 
 #ifdef PROCESSCONTAINERS_ENABLED
@@ -313,13 +331,100 @@ namespace RPC {
 
 #endif
 
-    Communicator::RemoteHost::RemoteHost(const Core::NodeId& remoteNode)
-        : RemoteProcess()
-    {
-    }
-
 #ifdef __WINDOWS__
 #pragma warning(disable : 4355)
+#endif
+
+#ifdef REMOTEINVOCATION_ENABLED
+    class DirectIPCServer : public Core::IIPCServer {
+    public: 
+        void Procedure(Core::IPCChannel& source, Core::ProxyType<Core::IIPC>& message) {
+            // This class should only by used for invoking remote methods!
+            ASSERT(message->Label() == InvokeMessage::Id());
+
+            Job(source, message, nullptr).Dispatch();
+        }
+    };
+
+    // Helper template for calling functions of IRemoteInvocation on remote device
+    // Syntax friendly to inlining argument function
+    template<typename FuncType>
+    void RemoteInvocationCall(const string& remoteAddress, FuncType&& processFunction) 
+    {
+        auto _engine = Core::ProxyType<DirectIPCServer>::Create();
+
+        if (_engine.IsValid()) {
+            auto _client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(remoteAddress.c_str()), Core::ProxyType<Core::IIPCServer>(_engine));
+
+            if (_client.IsValid()) {
+                Exchange::IRemoteInvocation* _remote = _client->Open<Exchange::IRemoteInvocation>(_T("RemoteInvocation"), ~0, 2000);
+
+                if (_remote != nullptr) {
+                    
+                    processFunction(_remote);           
+
+                    _remote->Release();
+                } else {
+                    TRACE_L1("Could not open remote communicaiton with service on address %s", remoteAddress.c_str());
+                }
+
+                _client.Release();
+            } else {
+                TRACE_L1("Failed to create CommunicatorClient while trying to remote launch on address %s", remoteAddress.c_str());
+            }
+
+            _engine.Release();
+        } else {
+            TRACE_L1("Failed to create InvokeServer while trying to remote launch on address %s", remoteAddress.c_str());
+        }
+    }
+
+    Communicator::RemoteHost::RemoteHost(const string& callsign, const string& remoteAddress)
+        : MonitorableRemoteProcess(callsign)
+        , _connectionId(0)
+        , _remoteAddress(remoteAddress)
+    {
+        
+    }
+
+    void Communicator::RemoteHost::Launch(const Object& instance, const Config& config) 
+    {
+        auto remoteCall = [this, &instance, &config] (Exchange::IRemoteInvocation* remote) {
+            uint32_t loggingSettings = (Logging::LoggingType<Logging::Startup>::IsEnabled() ? 0x01 : 0) | (Logging::LoggingType<Logging::Shutdown>::IsEnabled() ? 0x02 : 0) | (Logging::LoggingType<Logging::Notification>::IsEnabled() ? 0x04 : 0);
+
+            uint16_t port = Core::NodeId(config.Connector().c_str()).PortNumber();
+
+            remote->LinkByCallsign(port, instance.Interface(), Id(), instance.Callsign());
+        };
+
+        RemoteInvocationCall(instance.RemoteAddress(), remoteCall);
+    }
+
+    class RemoteHostTerminator : public Core::IDispatch {
+    public: 
+        RemoteHostTerminator(string remoteAddress, uint32_t connectionId)
+            : _remoteAddress(remoteAddress)
+            , _connectionId(connectionId)
+        {
+        }
+
+        void Dispatch() override {
+            uint32_t id = _connectionId;
+
+            RemoteInvocationCall(_remoteAddress, [id] (Exchange::IRemoteInvocation* remote) {
+                remote->Unlink(id);
+            });
+        }
+    private:
+        string _remoteAddress;
+        uint32_t _connectionId;
+    };
+
+    void Communicator::RemoteHost::Terminate() 
+    {
+        auto job = Core::ProxyType<RemoteHostTerminator>::Create(_remoteAddress, Id());
+        Core::WorkerPool::Instance().Submit(Core::ProxyType<Core::IDispatch>(job));
+    }
 #endif
 
     Communicator::Communicator(const Core::NodeId& node, const string& proxyStubPath)
@@ -442,7 +547,11 @@ namespace RPC {
         ASSERT(BaseClass::IsOpen() == false);
         _announceEvent.ResetEvent();
 
-        _announceMessage->Parameters().Set(Core::ProcessInfo().Id(), interfaceId, implementation, exchangeId);
+        // TODO: Check if we can register object before channel is valid?
+        Core::ProxyType<Core::IPCChannel> refChannel(*this);
+        RPC::instanceId_t instanceId = RPC::Administrator::Instance().RegisterInterface(refChannel, implementation, interfaceId);
+
+        _announceMessage->Parameters().Set(Core::ProcessInfo().Id(), interfaceId, instanceId, exchangeId);
 
         uint32_t result = BaseClass::Open(waitTime);
 
@@ -468,18 +577,7 @@ namespace RPC {
 
             if (result != Core::ERROR_NONE) {
                 TRACE_L1("Error during invoke of AnnounceMessage: %d", result);
-            } else {
-                RPC::Data::Init& setupFrame(_announceMessage->Parameters());
-
-                if (setupFrame.IsRequested() == true) {
-                    Core::ProxyType<Core::IPCChannel> refChannel(*this);
-
-                    ASSERT(refChannel.IsValid());
-
-                    // Register the interface we are passing to the otherside:
-                    RPC::Administrator::Instance().RegisterInterface(refChannel, setupFrame.Implementation(), setupFrame.InterfaceId());
-                }
-            }
+            } 
         } else {
             TRACE_L1("Connection to the server is down");
         }

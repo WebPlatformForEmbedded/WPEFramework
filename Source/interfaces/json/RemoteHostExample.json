@@ -1,0 +1,43 @@
+{
+  "$schema": "interface.schema.json",
+  "jsonrpc": "2.0",
+  "info": {
+    "title": "RemoteHostExample API",
+    "class": "RemoteHostExample",
+    "description": "RemoteHostExample JSON-RPC interface"
+  },
+  "common": {
+    "$ref": "common.json"
+  },
+  "methods": {
+    "greet": {
+      "summary": "Sends greetings to other device",
+      "params": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "description": "Greetings message",
+            "type": "string",
+            "example": "Hello remote!"
+          }
+        }
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "description": "Response for greetings",
+            "type": "string",
+            "example": "Hello from the other side!"
+          }
+        }
+      },
+      "errors": [
+        {
+          "description": "Could not reach out the other side ",
+          "$ref": "#/common/errors/timedout"
+        }
+      ]
+    }
+  }
+}

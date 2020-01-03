@@ -112,12 +112,12 @@ namespace ProxyStub {
         };
 
     public:
-        UnknownProxy(const Core::ProxyType<Core::IPCChannel>& channel, void* implementation, const uint32_t interfaceId, const bool remoteRefCounted, Core::IUnknown* parent)
+        UnknownProxy(const Core::ProxyType<Core::IPCChannel>& channel, RPC::instanceId_t instanceId, const uint32_t interfaceId, const bool remoteRefCounted, Core::IUnknown* parent)
             : _remoteAddRef(remoteRefCounted ? REGISTERED : UNREGISTERED)
             , _refCount(remoteRefCounted ? 1 : 0)
             , _interfaceId(interfaceId)
             , _releaseCount(1)
-            , _implementation(implementation)
+            , _instanceId(instanceId)
             , _channel(channel)
             , _parent(*parent)
         {
@@ -145,7 +145,7 @@ namespace ProxyStub {
         {
             Core::ProxyType<RPC::InvokeMessage> message(RPC::Administrator::Instance().Message());
 
-            message->Parameters().Set(_implementation, _interfaceId, methodId + 3);
+            message->Parameters().Set(_instanceId, _interfaceId, methodId + 3);
 
             return (message);
         }
@@ -190,7 +190,7 @@ namespace ProxyStub {
 
                 // Seems we really would like to "preserve" this interface, so report it in use
                 if (_remoteAddRef.compare_exchange_weak(value, PENDING_ADDREF | CACHING, std::memory_order_release, std::memory_order_relaxed) == true) {
-                    // INcrement for the registration..
+                    // Increment for the registration..
                     RPC::Administrator::Instance().RegisterProxy(const_cast<UnknownProxy&>(*this));
                 }
             }
@@ -267,7 +267,7 @@ namespace ProxyStub {
             // We have reached "0", signal the other side..
             Core::ProxyType<RPC::InvokeMessage> message(RPC::Administrator::Instance().Message());
 
-            message->Parameters().Set(_implementation, _interfaceId, 1);
+            message->Parameters().Set(_instanceId, _interfaceId, 1);
             message->Parameters().Writer().Number<uint32_t>(_releaseCount.load());
 
             // Just try the destruction for few Seconds...
@@ -287,9 +287,9 @@ namespace ProxyStub {
         {
             return (_channel);
         }
-        inline void* Implementation() const
+        inline RPC::instanceId_t InstanceId() const
         {
-            return (_implementation);
+            return (_instanceId);
         }
         inline uint32_t InterfaceId() const
         {
@@ -317,7 +317,7 @@ namespace ProxyStub {
         mutable uint32_t _refCount;
         const uint32_t _interfaceId;
         std::atomic<uint32_t> _releaseCount;
-        void* _implementation;
+        RPC::instanceId_t _instanceId;
         mutable Core::ProxyType<Core::IPCChannel> _channel;
         Core::IUnknown& _parent;
     };
@@ -336,8 +336,8 @@ namespace ProxyStub {
 #ifdef __WINDOWS__
 #pragma warning(disable : 4355)
 #endif
-        UnknownProxyType(const Core::ProxyType<Core::IPCChannel>& channel, void* implementation, const bool remoteRefCounted)
-            : _unknown(channel, implementation, INTERFACE::ID, remoteRefCounted, this)
+        UnknownProxyType(const Core::ProxyType<Core::IPCChannel>& channel, RPC::instanceId_t instanceId, const bool remoteRefCounted)
+            : _unknown(channel, instanceId, INTERFACE::ID, remoteRefCounted, this)
         {
         }
 #ifdef __WINDOWS__
@@ -390,13 +390,13 @@ namespace ProxyStub {
                 Core::ProxyType<RPC::InvokeMessage> message(RPC::Administrator::Instance().Message());
                 RPC::Data::Frame::Writer parameters(message->Parameters().Writer());
 
-                message->Parameters().Set(_unknown.Implementation(), INTERFACE::ID, 2);
+                message->Parameters().Set(_unknown.InstanceId(), INTERFACE::ID, 2);
                 parameters.Number<uint32_t>(interfaceNumber);
                 if (_unknown.Invoke(message, RPC::CommunicationTimeOut) == Core::ERROR_NONE) {
                     RPC::Data::Frame::Reader response(message->Response().Reader());
 
                     // From what is returned, we need to create a proxy
-                    ProxyStub::UnknownProxy* instance = RPC::Administrator::Instance().ProxyInstance(_unknown.Channel(), response.Number<void*>(), interfaceNumber, true, interfaceNumber, false);
+                    ProxyStub::UnknownProxy* instance = RPC::Administrator::Instance().ProxyInstance(_unknown.Channel(), response.Number<RPC::instanceId_t>(), interfaceNumber, true, interfaceNumber, false);
                     result = (instance != nullptr ? instance->QueryInterface(interfaceNumber) : nullptr);
                 }
             }
@@ -408,12 +408,13 @@ namespace ProxyStub {
         {
             return (reinterpret_cast<ACTUAL_INTERFACE*>(QueryInterface(ACTUAL_INTERFACE::ID)));
         }
-        inline void* Interface(void* implementation, const uint32_t interfaceId) const
+        inline void* Interface(RPC::instanceId_t instanceId, const uint32_t interfaceId) const
         {
             void* result = nullptr;
 
             // From what is returned, we need to create a proxy
-            ProxyStub::UnknownProxy* instance = RPC::Administrator::Instance().ProxyInstance(_unknown.Channel(), implementation, interfaceId, true, interfaceId, false);
+            ProxyStub::UnknownProxy* instance = RPC::Administrator::Instance().ProxyInstance(_unknown.Channel(), instanceId, interfaceId, true, interfaceId, false);
+
             result = (instance != nullptr ? instance->QueryInterface(interfaceId) : nullptr);
 
             return (result);
@@ -423,15 +424,15 @@ namespace ProxyStub {
 
             while (reader.HasData() == true) {
                 ASSERT(reader.Length() >= (sizeof(void*) + sizeof(uint32_t)));
-                void* impl = reader.Number<void*>();
+                RPC::instanceId_t instanceId = reader.Number<RPC::instanceId_t>();
                 uint32_t id = reader.Number<uint32_t>();
                 if ((id & 0x80000000) == 0) {
                     // Just AddRef this implementation
-                    RPC::Administrator::Instance().AddRef(impl, id);
+                    RPC::Administrator::Instance().AddRef(instanceId, id);
                 } else {
                     // Just Release this implementation
                     id = id ^ 0x80000000;
-                    RPC::Administrator::Instance().Release(impl, id);
+                    RPC::Administrator::Instance().Release(instanceId, id);
                 }
             }
         }

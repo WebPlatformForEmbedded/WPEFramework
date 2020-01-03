@@ -15,6 +15,9 @@ set(SOURCES_COM
         com/Messages.h
         com/Administrator.cpp
         com/Communicator.cpp
+        com/RemoteLinker.cpp
+        com/RemoteLinker.h
+        com/IRemoteLinker.h
         com/ITracing.cpp
         com/IStringIterator.cpp
         com/IValueIterator.cpp
@@ -47,6 +50,10 @@ foreach(file IN LISTS SOURCES_COM SOURCES_WEBSOCKETS)
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/../${file}" ${CMAKE_CURRENT_SOURCE_DIR} COPYONLY)
 endforeach()
 
+# Proxy stubs for RemoteLinker
+ProxyStubGenerator(NAMESPACE "RPC" INPUT ${CMAKE_CURRENT_SOURCE_DIR}/IRemoteLinker.h)
+file(GLOB PROXY_STUB_SOURCES ProxyStubs*.cpp)
+
 set(COM_INCLUDES
         Administrator.h
         com.h
@@ -58,6 +65,8 @@ set(COM_INCLUDES
         IRPCIterator.h
         IStringIterator.h
         IValueIterator.h
+        RemoteLinker.h
+        IRemoteLinker.h
         )
 
 set(PROTOCOLS_INCLUDES
@@ -92,8 +101,10 @@ add_library(${TARGET} SHARED
         JSONRPCLink.cpp
         Administrator.cpp
         Communicator.cpp
+        RemoteLinker.cpp
         IStringIterator.cpp
         IValueIterator.cpp
+        ${PROXY_STUB_SOURCES}
         )
 
 target_link_libraries(${TARGET}

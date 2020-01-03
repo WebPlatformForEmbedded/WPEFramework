@@ -34,7 +34,7 @@ option(INTERFACES
 option(EXECUTABLE
         "Include the hosting executable." ON)
 option(VIRTUALINPUT
-        "Include VirtualInput for external applications." OFF)
+        "Include VirtualInput for external applications." ON)
 option(COMPOSITORCLIENT
         "Include a graphics backend abstraction for external applications." OFF)
 option(GSTREAMERCLIENT

@@ -3,10 +3,12 @@
 #include "Administrator.h"
 #include "Communicator.h"
 #include "IRPCIterator.h"
+#include "IRemoteLinker.h"
 #include "IStringIterator.h"
 #include "ITracing.h"
 #include "IUnknown.h"
 #include "IValueIterator.h"
+#include "RemoteLinker.h"
 #include "Ids.h"
 #include "Messages.h"
 

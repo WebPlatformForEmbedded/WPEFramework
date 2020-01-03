@@ -18,7 +18,7 @@ namespace ProxyStub {
         Core::ProxyType<Core::IPCChannel>& channel,
         Core::ProxyType<RPC::InvokeMessage>& message)
     {
-        void* rawIdentifier(message->Parameters().Implementation<void*>());
+        void* rawIdentifier(RPC::Administrator::GetImplementation<void*>(message->Parameters().InstanceId()));
         Core::IUnknown* implementation(Convert(rawIdentifier));
 
         ASSERT(implementation != nullptr);
@@ -53,7 +53,10 @@ namespace ProxyStub {
                 uint32_t newInterfaceId(reader.Number<uint32_t>());
 
                 void* newInterface = implementation->QueryInterface(newInterfaceId);
-                response.Number<void*>(newInterface);
+
+                RPC::instanceId_t newInterface_instanceId = RPC::Administrator::Instance().RegisterInterface(channel, newInterface, newInterfaceId);
+
+                response.Number<RPC::instanceId_t>(newInterface_instanceId);
 
                 RPC::Administrator::Instance().RegisterInterface(channel, newInterface, newInterfaceId);
                 break;

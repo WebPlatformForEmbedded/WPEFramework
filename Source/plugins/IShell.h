@@ -6,7 +6,7 @@
 
 namespace WPEFramework {
 namespace PluginHost {
-
+    
     struct EXTERNAL IShell
         : virtual public Core::IUnknown {
         enum {
@@ -153,6 +153,9 @@ namespace PluginHost {
         //! DataPath: <config:datapath>/<plugin:classname>/
         virtual string DataPath() const = 0;
 
+        //! SystemPath: <config:systempath>/
+        virtual string SystemPath() const = 0;
+
         //! VolatilePath: <config:volatilepath>/<plugin:callsign>/
         virtual string ProxyStubPath() const = 0;
 
@@ -278,8 +281,8 @@ namespace PluginHost {
             return (nullptr);
         }
 
-    private:
-        void* Root(uint32_t& pid, const uint32_t waitTime, const string className, const uint32_t interface, const uint32_t version = ~0);
+    public:
+        void* Root(uint32_t& connectionId, const uint32_t waitTime, const string className, const uint32_t interface, const uint32_t version = ~0);
     };
 } // namespace PluginHost
 

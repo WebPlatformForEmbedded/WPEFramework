@@ -234,6 +234,8 @@ namespace PluginHost {
                 , ProxyStubPath()
 #ifdef __WINDOWS__
                 , Communicator(_T("127.0.0.1:7889"))
+#elif defined(REMOTEINVOCATION_ENABLED)
+                , Communicator(_T("0.0.0.0:7889"))
 #else
                 , Communicator(_T("/tmp/communicator|0777"))
 #endif
@@ -1443,6 +1445,7 @@ namespace PluginHost {
                 , _subSystems(this)
                 , _authenticationHandler(nullptr)
             {
+
             }
             #ifdef __WINDOWS__
             #pragma warning(default : 4355)
