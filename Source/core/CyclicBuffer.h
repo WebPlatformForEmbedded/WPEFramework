@@ -248,6 +248,7 @@ namespace Core {
         void AdminLock();
         void AdminUnlock();
         void Reevaluate();
+        void Waiting();
         uint32_t SignalLock(const uint32_t waitTime);
 
     private:
