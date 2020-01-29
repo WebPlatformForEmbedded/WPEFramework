@@ -1,7 +1,6 @@
-
-import CppParser
-
 #!/usr/bin/env python
+
+from . import CppParser
 
 CLASS_IUNKNOWN = "::WPEFramework::Core::IUnknown"
 
