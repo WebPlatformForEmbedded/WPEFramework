@@ -14,12 +14,12 @@ if(NOT DEFINED GENERIC_CMAKE_MODULE_PATH)
    )
 endif()
 
-configure_file( "${CMAKE_SOURCE_DIR}/cmake/FindProxyStubGenerator.cmake.in"
+configure_file( "${CMAKE_SOURCE_DIR}/Tools/cmake/FindProxyStubGenerator.cmake.in"
                 "${CMAKE_CURRENT_BINARY_DIR}/FindProxyStubGenerator.cmake"
                 @ONLY
 )
 
-configure_file( "${CMAKE_SOURCE_DIR}/cmake/FindJsonGenerator.cmake.in"
+configure_file( "${CMAKE_SOURCE_DIR}/Tools/cmake/FindJsonGenerator.cmake.in"
                 "${CMAKE_CURRENT_BINARY_DIR}/FindJsonGenerator.cmake"
                 @ONLY
 )
@@ -35,8 +35,8 @@ install(FILES
 )
 
 install(DIRECTORY 
-        "${CMAKE_SOURCE_DIR}/ProxyStubGenerator"
-        "${CMAKE_SOURCE_DIR}/JsonGenerator"
+        "${CMAKE_SOURCE_DIR}/Tools/ProxyStubGenerator"
+        "${CMAKE_SOURCE_DIR}/Tools/JsonGenerator"
     DESTINATION ${GENERATOR_INSTALL_PATH}
     FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 )
