@@ -143,6 +143,6 @@ json_write("${CMAKE_BINARY_DIR}/Config.json" ${CONFIG})
 
 install(
         FILES ${CMAKE_BINARY_DIR}/Config.json
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/../etc/${NAMESPACE}/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/etc/${NAMESPACE}/
         RENAME config.json
         COMPONENT ${MODULE_NAME})

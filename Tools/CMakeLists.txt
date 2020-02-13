@@ -26,12 +26,12 @@ configure_file( "${CMAKE_SOURCE_DIR}/Tools/cmake/FindJsonGenerator.cmake.in"
 
 install(FILES 
         "${CMAKE_CURRENT_BINARY_DIR}/FindProxyStubGenerator.cmake"
-    DESTINATION ${GENERIC_CMAKE_MODULE_PATH}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/share/cmake-${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}/Modules/
 )
 
 install(FILES 
         "${CMAKE_CURRENT_BINARY_DIR}/FindJsonGenerator.cmake"
-    DESTINATION ${GENERIC_CMAKE_MODULE_PATH}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/share/cmake-${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}/Modules/
 )
 
 install(DIRECTORY 
