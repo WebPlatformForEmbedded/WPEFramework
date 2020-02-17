@@ -55,6 +55,13 @@ install(FILES "${CMAKE_SOURCE_DIR}/Source/interfaces/IDRM.h"
         RENAME "cdmi.h"
         DESTINATION "${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}/interfaces/")
 
+install(FILES "${CMAKE_SOURCE_DIR}/Source/interfaces/JMath.h"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}/interfaces/")
+
+install(FILES "${CMAKE_SOURCE_DIR}/Source/interfaces/json/JsonData_OCDM.h"
+        RENAME "JsonData_OpenCDMi.h"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}/interfaces/json/")
+
 install(DIRECTORY
             "${CMAKE_SOURCE_DIR}/cmake/config"
             "${CMAKE_SOURCE_DIR}/cmake/templates"

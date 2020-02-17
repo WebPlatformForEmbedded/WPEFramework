@@ -90,7 +90,7 @@ macro(write_config)
 
         install(
                 FILES ${plugin}.json DESTINATION
-                "${CMAKE_INSTALL_PREFIX}/../etc/${NAMESPACE}/plugins/"
+                "${CMAKE_INSTALL_PREFIX}/etc/${NAMESPACE}/plugins/"
                 COMPONENT ${MODULE_NAME})
     endforeach()
 endmacro()
@@ -152,6 +152,6 @@ function(print_target_properties tgt)
     endforeach(prop)
 endfunction(print_target_properties)
 
-
-
-
+if(NOT VIRTUALINPUT)
+  add_compile_options("-DVIRTUALINPUT_DISABLED")
+endif(NOT VIRTUALINPUT)

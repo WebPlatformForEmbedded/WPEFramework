@@ -12,7 +12,10 @@
 #include "JSONRPC.h"
 #include "Request.h"
 #include "Service.h"
+
+#ifndef VIRTUALINPUT_DISABLED
 #include "VirtualInput.h"
+#endif
 
 #ifdef __WINDOWS__
 #pragma comment(lib, "plugins.lib")
