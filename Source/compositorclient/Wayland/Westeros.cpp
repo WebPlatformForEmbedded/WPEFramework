@@ -564,7 +564,7 @@ namespace Wayland {
 
     void Display::SurfaceImplementation::ZOrder(const uint32_t order)
     {
-        wl_simple_shell_set_zorder(_display->_simpleShell, _id, order);
+        wl_simple_shell_set_zorder(_display->_simpleShell, _id, wl_fixed_from_double(order));
         wl_display_flush(_display->_display);
         Redraw();
     }
