@@ -1,0 +1,237 @@
+# Module.h related sources and include paths are excluded to avoid undefined symbol Composition_Client
+
+cmake_minimum_required(
+    VERSION
+        3.7
+)
+
+# Avoid any surprises if a newer CMake version is made available
+cmake_policy(
+    VERSION
+        3.7...3.12
+)
+
+# The others in WPEFramework also shout who theyr are. A little more noise does not hurt.
+message("Setup ${TARGET} v${VERSION}...")
+
+if(NOT TARGET ${NAMESPACE}Core::${NAMESPACE}Core)
+    message(FATAL_ERROR "Target ${NAMESPACE}Core::${NAMESPACE}Core is missing. It should be defined somewhere in this pile of code. Have fun locating it!")
+endif()
+
+if(NOT TARGET ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput)
+    message(FATAL_ERROR "Target ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput is missing. It should be defined somewhere in this pile of code. Have fun locating it!")
+endif()
+
+if(NOT TARGET ${NAMESPACE}Tracing::${NAMESPACE}Tracing)
+    message(FATAL_ERROR "Target ${NAMESPACE}Tracing::${NAMESPACE}Tracing is missing. It should be defined somewhere in this pile of code. Have fun locating it!")
+endif()
+
+find_package(GBM REQUIRED)
+
+if(NOT GBM_FOUND)
+    message(FATAL_ERROR "The GBM library and its headers cannot be found.")
+endif()
+
+if(NOT TARGET gbm::gbm)
+    message(FATAL_ERROR "Target gbm::gbm is missing. Has the FindGBM.cmake been modified?")
+endif()
+
+find_package(LibDRM REQUIRED)
+
+if(NOT LIBDRM_FOUND)
+    message(FATAL_ERROR "The libDRM library and its headers cannot be found.")
+endif()
+
+if(NOT TARGET gbm::gbm)
+    message(FATAL_ERROR "Target gbm::gbm is missing. Has the FindGBM.cmake been modified?")
+endif()
+
+find_package(EGL REQUIRED)
+
+if(NOT EGL_FOUND)
+    message(FATAL_ERROR "The EGL library and its headers cannot be found.")
+endif()
+
+if(NOT TARGET EGL::EGL)
+    message(FATAL_ERROR "Target EGL::EGL is missing. Has the FindEGL.cmake been modified?")
+endif()
+
+# The target to be build
+add_library(
+    ${TARGET}
+    SHARED
+    ""
+)
+
+# The (new) sources of this target
+target_sources(
+    ${TARGET}
+    PUBLIC
+        # File location when used by another target in the same build(system)
+        # These paths result undefined symbols which an educated-guess tells us that there might be something wrong
+#        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../Client.h>
+#        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../Module.h>
+    PRIVATE
+        Implementation.cpp
+        ModeSet.h
+        ModeSet.cpp
+)
+
+# Preprocessor definitions to compile against the headers of the dependencies
+target_compile_definitions(
+    ${TARGET}
+    PUBLIC
+        $<TARGET_PROPERTY:${NAMESPACE}Core::${NAMESPACE}Core,INTERFACE_COMPILE_DEFINITIONS>
+        $<TARGET_PROPERTY:${NAMESPACE}Tracing::${NAMESPACE}Tracing,INTERFACE_COMPILE_DEFINITIONS>
+        $<TARGET_PROPERTY:EGL::EGL,INTERFACE_COMPILE_DEFINITIONS>
+    PRIVATE
+        $<TARGET_PROPERTY:${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput,INTERFACE_COMPILE_DEFINITIONS>
+        $<TARGET_PROPERTY:gbm::gbm,INTERFACE_COMPILE_DEFINITIONS>
+        $<TARGET_PROPERTY:libdrm::libdrm,INTERFACE_COMPILE_DEFINITIONS>
+)
+
+# Compiler options to compile against the headers of the dependencies; sometimes the distinction is not made between options and definitions for (imported) targets, hence, include them to be on the safe side
+# Assume that no (additional) options are required for the (imported) headers
+target_compile_options(
+    ${TARGET}
+    PUBLIC
+        $<TARGET_PROPERTY:${NAMESPACE}Core::${NAMESPACE}Core,INTERFACE_COMPILE_OPTIONS>
+        $<TARGET_PROPERTY:${NAMESPACE}Tracing::${NAMESPACE}Tracing,INTERFACE_COMPILE_OPTIONS>
+        $<TARGET_PROPERTY:EGL::EGL,INTERFACE_COMPILE_OPTIONS>
+    PRIVATE
+        $<TARGET_PROPERTY:${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput,INTERFACE_COMPILE_OPTIONS>
+        $<TARGET_PROPERTY:gbm::gbm,INTERFACE_COMPILE_OPTIONS>
+        $<TARGET_PROPERTY:libdrm::libdrm,INTERFACE_COMPILE_OPTIONS>
+)
+
+# Target properties not set in any other way
+set_target_properties(
+    ${TARGET}
+    PROPERTIES
+        # Disable the decaying behavior of the feature set
+        CXX_STANDARD_REQUIRED ON
+        # Specify API / build version (and trigger creation of symlinks on supported platforms)
+        VERSION ${VERSION}
+        SOVERSION ${VERSION_MAJOR}
+        # Force the use of SOVERSION
+        NO_SONAME OFF
+)
+
+# Compiler features
+# Assume that no (additional) features are required for the imported targets
+if(CMAKE_VERSION VERSION_LESS 3.8)
+    set_target_properties(
+        ${TARGET}
+        PROPERTIES
+            CXX_STANDARD 11
+    )
+else()
+    target_compile_features(
+        ${TARGET}
+        PRIVATE
+            cxx_std_11
+    )
+endif()
+
+# Just a bunch of search paths
+target_include_directories(
+    ${TARGET}
+    PUBLIC
+        # Added for Module.h and Client.h, but this is basically redundant
+        # Their include location when used by another target in the same buildi (system)
+#        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../>
+        # Their include location when the project is installed and used outside this build (system)
+        $<INSTALL_INTERFACE:include/${NAMESPACE}>
+        # These targets originate outside this target and the INSTALL_INTERFACE / BUILD_INTERFACE are, typically, not specified / differentiated here but in their respective build / configure files
+        $<TARGET_PROPERTY:${NAMESPACE}Core::${NAMESPACE}Core,INTERFACE_INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:${NAMESPACE}Tracing::${NAMESPACE}Tracing,INTERFACE_INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:EGL::EGL,INTERFACE_INCLUDE_DIRECTORIES>
+    PRIVATE
+        $<TARGET_PROPERTY:${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput,INTERFACE_INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:gbm::gbm,INTERFACE_INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:libdrm::libdrm,INTERFACE_INCLUDE_DIRECTORIES>
+)
+
+# For now use the helper functions like all the other parts of WPEFramework do to install
+
+# First, fix (if possible) the imported targets because the helpers expect the IMPORTED_LOCATION to be set. Moreover the assume each (imported) target is associated with a single shared library (name), and vice versa. That is a very restrictive and definitly not always true. All information already existis is other target properties. Anyway, play nice.
+
+foreach(IMPORTED_TARGET libdrm::libdrm gbm::gbm)
+    # How many libraries does the target represent?
+    get_target_property(TARGET_LINK_LIBS ${IMPORTED_TARGET} INTERFACE_LINK_LIBRARIES)
+    list(LENGTH TARGET_LINK_LIBS COUNT_LIBS)
+
+    # Is there only a single location on disk to get the library/libraries?
+    get_target_property(TARGET_LINK_DIRS ${IMPORTED_TARGET} INTERFACE_LINK_DIRECTORIES)
+    list(LENGTH TARGET_LINK_DIRS COUNT_DIRS)
+
+    # Assume all are greater than 0
+    if(1 LESS COUNT_LIBS OR 1 LESS COUNT_DIRS)
+        message(FATAL_ERROR "The preconditions to use the install helpers cannot be met for the (imported) target ${IMPORTED_TARGET}")
+    else()
+        set_target_properties(
+            ${IMPORTED_TARGET}
+            PROPERTIES
+                IMPORTED_LOCATION "${TARGET_LINK_DIRS}/lib${TARGET_LINK_LIBS}.so"
+        )
+    endif()
+
+    unset(TARGET_LINK_LIBS)
+    unset(TARGET_LINK_DIRS)
+    unset(COUNT_LIBS)
+    unset(COUNT_DIRS)
+endforeach()
+
+# A little late, but things had to be fixed
+target_link_libraries(
+    ${TARGET}
+    PUBLIC
+        ${NAMESPACE}Core::${NAMESPACE}Core
+        ${NAMESPACE}Tracing::${NAMESPACE}Tracing
+        ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
+        libdrm::libdrm
+        gbm::gbm
+        # There is no need to link against EGL!
+#        EGL::EGL
+)
+
+# Yet another ugly way to specify a dependency
+# Is the underlying abstract / interface target not known  defined?
+if(PROTOCOLS)
+    target_link_libraries(${TARGET}
+            PUBLIC
+              ${NAMESPACE}Protocols::${NAMESPACE}Protocols
+            )
+else()
+    target_link_libraries(${TARGET}
+            PUBLIC
+              ${NAMESPACE}COM::${NAMESPACE}COM
+            )
+endif()
+
+set_target_properties(${TARGET} PROPERTIES
+        CXX_STANDARD 11
+        CXX_STANDARD_REQUIRED YES
+        VERSION ${VERSION}
+        SOVERSION ${VERSION_MAJOR}
+)
+
+# Finally, do like the others do to get things installed
+install(
+    TARGETS
+        ${TARGET} EXPORT ${TARGET}Targets
+    ARCHIVE
+        DESTINATION lib COMPONENT libs
+    LIBRARY
+        DESTINATION lib COMPONENT libs
+    FRAMEWORK
+        DESTINATION bin COMPONENT libs
+)
+
+InstallPackageConfig(
+    TARGETS
+        ${TARGET}
+    DESCRIPTION
+        "A compositor implementation wrapper for RPI and key handling.")
+
+InstallCMakeConfig(TARGETS ${TARGET})
