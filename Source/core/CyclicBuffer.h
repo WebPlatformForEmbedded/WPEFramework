@@ -30,6 +30,13 @@
 #include <semaphore.h>
 #endif
 
+
+#ifdef __GNUC__
+#define VARIABLE_IS_USED __attribute__((used))
+#else
+#define VARIABLE_IS_USED
+#endif
+
 // ---- Referenced classes and types ----
 
 // ---- Helper types and constants ----
@@ -112,16 +119,6 @@ namespace Core {
             }
 
         private:
-            uint32_t GetCurrentTail() const
-            {
-                return GetCompleteTail(_Offset);
-            }
-
-            uint32_t GetRemainingRequired() const
-            {
-                return (_Size - _Offset);
-            }
-
             CyclicBuffer& _Parent;
             uint32_t _Tail;
 

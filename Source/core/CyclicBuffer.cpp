@@ -187,7 +187,7 @@ namespace Core {
         }
     }
 
-    void CyclicBuffer::Alert()
+    VARIABLE_IS_USED inline void CyclicBuffer::Alert()
     {
 
         // Lock the administrator..
