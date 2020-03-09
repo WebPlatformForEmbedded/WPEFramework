@@ -564,7 +564,7 @@ namespace Wayland {
 
     void Display::SurfaceImplementation::ZOrder(const uint32_t order)
     {
-        wl_simple_shell_set_zorder(_display->_simpleShell, _id, wl_fixed_from_double(order));
+        wl_simple_shell_set_zorder(_display->_simpleShell, _id, wl_fixed_from_double(order * 0.1));
         wl_display_flush(_display->_display);
         Redraw();
     }
@@ -578,7 +578,12 @@ namespace Wayland {
 
     void Display::SurfaceImplementation::SetTop()
     {
-        wl_simple_shell_set_zorder(_display->_simpleShell, _id, 0);
+#ifdef BCM_HOST
+        double top = 0.0;
+#else
+        double top = 1.0;
+#endif
+        wl_simple_shell_set_zorder(_display->_simpleShell, _id, wl_fixed_from_double(top));
         wl_display_flush(_display->_display);
         Redraw();
     }
