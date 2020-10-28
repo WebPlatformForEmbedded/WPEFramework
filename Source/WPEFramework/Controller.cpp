@@ -196,7 +196,7 @@ namespace Plugin {
             // No more parameters, flush it all..
             _pluginServer->Dispatcher().GetMetaData(response->Channels);
             _pluginServer->Services().GetMetaData(response->Plugins);
-            PluginHost::WorkerPool::Instance().GetMetaData(response->Process);
+            WorkerPoolMetaData(response->Process);
 
             result->Body(Core::proxy_cast<Web::IBody>(response));
         } else if (index.Current() == _T("Links")) {
@@ -253,7 +253,7 @@ namespace Plugin {
         } else if (index.Current() == _T("Process")) {
             Core::ProxyType<Web::JSONBodyType<PluginHost::MetaData>> response(jsonBodyMetaDataFactory.Element());
 
-            PluginHost::WorkerPool::Instance().GetMetaData(response->Process);
+            WorkerPoolMetaData(response->Process);
 
             result->Body(Core::proxy_cast<Web::IBody>(response));
         } else if (index.Current() == _T("Discovery")) {

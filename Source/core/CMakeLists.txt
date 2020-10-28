@@ -42,6 +42,7 @@ add_library(${TARGET} SHARED
         Thread.cpp
         Time.cpp
         Trace.cpp
+        WorkerPool.cpp
         XGetopt.cpp
         ResourceMonitor.cpp
         )
@@ -118,6 +119,8 @@ set(PUBLIC_HEADERS
         TypeTraits.h
         ValueRecorder.h
         XGetopt.h
+        ThreadPool.h
+        WorkerPool.h
         Module.h
         )
 

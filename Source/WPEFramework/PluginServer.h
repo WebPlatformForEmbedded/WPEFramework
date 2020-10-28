@@ -264,123 +264,19 @@ namespace PluginHost {
             Core::JSON::ArrayType<Plugin::Config> Plugins;
         };
 
-        class EXTERNAL WorkerPoolImplementation : public PluginHost::WorkerPool {
-        private:
-            class TimedJob {
-            public:
-                TimedJob()
-                    : _job()
-                {
-                }
-                TimedJob(const Core::ProxyType<Core::IDispatchType<void>>& job)
-                    : _job(job)
-                {
-                }
-                TimedJob(const TimedJob& copy)
-                    : _job(copy._job)
-                {
-                }
-                ~TimedJob()
-                {
-                }
-
-                TimedJob& operator=(const TimedJob& RHS)
-                {
-                    _job = RHS._job;
-                    return (*this);
-                }
-                bool operator==(const TimedJob& RHS) const
-                {
-                    return (_job == RHS._job);
-                }
-                bool operator!=(const TimedJob& RHS) const
-                {
-                    return (_job != RHS._job);
-                }
-
-            public:
-                uint64_t Timed(const uint64_t /* scheduledTime */)
-                {
-                    WorkerPoolImplementation::Instance().Submit(_job);
-                    _job.Release();
-
-                    // No need to reschedule, just drop it..
-                    return (0);
-                }
-
-            private:
-                Core::ProxyType<Core::IDispatchType<void>> _job;
-            };
-
-            typedef Core::ThreadPoolType<Core::Job, THREADPOOL_COUNT> ThreadPool;
-
-        private:
+        class WorkerPoolImplementation : public Core::WorkerPool {
+        public:
             WorkerPoolImplementation() = delete;
             WorkerPoolImplementation(const WorkerPoolImplementation&) = delete;
             WorkerPoolImplementation& operator=(const WorkerPoolImplementation&) = delete;
 
-        public:
             WorkerPoolImplementation(const uint32_t stackSize)
-                : _workers(stackSize, _T("WorkerPoolImplementation"))
-                , _timer(stackSize, _T("WorkerTimer"))
+                : Core::WorkerPool(THREADPOOL_COUNT, stackSize, 16)
             {
             }
-            ~WorkerPoolImplementation()
+            virtual ~WorkerPoolImplementation()
             {
             }
-
-        public:
-            // A-synchronous calls. If the method returns, the workers are accepting and handling work.
-            inline void Run()
-            {
-                _workers.Run();
-            }
-            // A-synchronous calls. If the method returns, the workers are all blocked, no new work will
-            // be accepted. Work in progress will be completed. Use the WaitState to wait for the actual block.
-            inline void Block()
-            {
-                _workers.Block();
-            }
-            inline void Wait(const uint32_t waitState, const uint32_t time)
-            {
-                _workers.Wait(waitState, time);
-            }
-            virtual void Submit(const Core::ProxyType<Core::IDispatch>& job) override
-            {
-                _workers.Submit(Core::Job(job), Core::infinite);
-            }
-            virtual void Schedule(const Core::Time& time, const Core::ProxyType<Core::IDispatch>& job) override
-            {
-                _timer.Schedule(time, TimedJob(job));
-            }
-            virtual uint32_t Revoke(const Core::ProxyType<Core::IDispatch>& job, const uint32_t waitTime = Core::infinite) override
-            {
-                // First check the timer if it can be removed from there.
-                _timer.Revoke(TimedJob(job));
-
-                // Also make sure it is taken of the WorkerPoolImplementation, if applicable.
-                return (_workers.Revoke(Core::Job(job), waitTime));
-            }
-            virtual void GetMetaData(MetaData::Server& metaData) const override
-            {
-                metaData.PendingRequests = _workers.Pending();
-                metaData.PoolOccupation = _workers.Active();
-
-                for (uint8_t teller = 0; teller < _workers.Count(); teller++) {
-                    // Example of why copy-constructor and assignment constructor should be equal...
-                    Core::JSON::DecUInt32 newElement;
-                    newElement = _workers[teller].Runs();
-                    metaData.ThreadPoolRuns.Add(newElement);
-                }
-            }
-            inline ::ThreadId ThreadId(const uint8_t index) const
-            {
-                return (index == 0 ? _timer.ThreadId() : _workers.ThreadId(index - 1));
-            }
-
-        private:
-            ThreadPool _workers;
-            Core::TimerType<TimedJob> _timer;
         };
 
     private:
@@ -1513,7 +1409,7 @@ namespace PluginHost {
                 {
                     _parent.Evaluate();
                 }
-                inline PluginHost::WorkerPool& WorkerPool()
+                inline Core::WorkerPool& WorkerPool()
                 {
                     return (_parent.WorkerPool());
                 }
@@ -1824,7 +1720,7 @@ namespace PluginHost {
 
                 RecursiveNotification(index);
             }
-            inline PluginHost::WorkerPool& WorkerPool()
+            inline Core::WorkerPool& WorkerPool()
             {
                 return (_server.WorkerPool());
             }

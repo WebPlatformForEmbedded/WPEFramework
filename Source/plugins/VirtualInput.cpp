@@ -173,15 +173,17 @@ ENUM_CONVERSION_BEGIN(PluginHost::VirtualInput::KeyMap::modifier)
 #endif
     VirtualInput::VirtualInput()
         : _lock()
-        , _repeatKey(*this)
+        , _repeatKey(this)
         , _modifiers(0)
         , _defaultMap(nullptr)
         , _notifierMap()
-        , _pressedCode(0)
+        , _pressedCode(~0)
         , _repeatCounter(0)
         , _repeatLimit(0)
     {
         // The derived class shoud set, the initial value of the modifiers...
+        _repeatKey.AddRef();
+        _repeatKey.AddReference();
     }
 #ifdef __WIN32__
 #pragma warning(default : 4355)
@@ -191,6 +193,9 @@ ENUM_CONVERSION_BEGIN(PluginHost::VirtualInput::KeyMap::modifier)
     {
 
         _mappingTables.clear();
+
+        _repeatKey.DropReference();
+        _repeatKey.CompositRelease();
     }
 
     void VirtualInput::Register(INotifier * callback, const uint32_t keyCode)
@@ -273,6 +278,7 @@ ENUM_CONVERSION_BEGIN(PluginHost::VirtualInput::KeyMap::modifier)
 
     uint32_t VirtualInput::KeyEvent(const bool pressed, const uint32_t code, const string& table)
     {
+
         uint32_t result = Core::ERROR_UNKNOWN_TABLE;
 
         _lock.Lock();
@@ -288,8 +294,7 @@ ENUM_CONVERSION_BEGIN(PluginHost::VirtualInput::KeyMap::modifier)
         }
 
         if (conversionTable != nullptr) {
-            uint32_t sendCode = 0;
-            uint16_t sendModifiers = 0;
+            uint32_t sendCode = ~0;
 
             result = Core::ERROR_NONE;
 
@@ -300,48 +305,25 @@ ENUM_CONVERSION_BEGIN(PluginHost::VirtualInput::KeyMap::modifier)
                 if (conversionTable->PassThrough() == false) {
                     result = Core::ERROR_UNKNOWN_KEY;
                 } else {
-                    result = Core::ERROR_UNKNOWN_KEY;
                     sendCode = code;
-                    sendModifiers = 0;
                 }
             } else {
-                sendCode = element->Code;
-                sendModifiers = element->Modifiers;
+                sendCode = element->Code | (element->Modifiers << 16);
             }
 
-            if ((!pressed) && (_pressedCode != code))
+            if ((pressed == false) && (_pressedCode != sendCode)) {
                 result = Core::ERROR_ALREADY_RELEASED;
-
-            if ((result == Core::ERROR_NONE) || (result == Core::ERROR_UNKNOWN_KEY)) {
-                if (pressed) {
-                    if (_pressedCode)
-                        KeyEvent(false, _pressedCode, _keyTable);
-                    TRACE_L1("Ingested keyCode: %d pressed", sendCode);
-                    _repeatCounter = _repeatLimit;
-                    _repeatKey.Arm(sendCode);
-                    _pressedCode = code;
-
-                    if (sendModifiers != 0) {
-                        ModifierKey(PRESSED, sendModifiers);
-                    }
-                } else {
-                    if (_pressedCode == code) {
-                        TRACE_L1("Ingested keyCode: %d Released", sendCode);
-                        _repeatKey.Reset();
-                        _pressedCode = 0;
-                    }
-                }
-
-                AdministerAndSendKey((pressed ? PRESSED : RELEASED), sendCode);
-
-                if (pressed == false) {
-                    if (sendModifiers != 0) {
-                        ModifierKey(RELEASED, sendModifiers);
-                    }
-                }
-
-                SendKey(COMPLETED, sendCode);
             }
+            else if (sendCode != static_cast<uint32_t>(~0)) {
+                if ( (pressed == true) && (_pressedCode != static_cast<uint32_t>(~0)) ) {
+                    DispatchRegisteredKey(RELEASED, _pressedCode);
+                }
+
+                DispatchRegisteredKey(
+                        (pressed ? PRESSED : RELEASED),
+                         sendCode);
+            }
+
         }
 
         _lock.Unlock();
@@ -351,37 +333,12 @@ ENUM_CONVERSION_BEGIN(PluginHost::VirtualInput::KeyMap::modifier)
 
     void VirtualInput::RepeatKey(const uint32_t code)
     {
-        AdministerAndSendKey(REPEAT, code);
-        _repeatCounter--;
-        if (!_repeatCounter)
-            KeyEvent(false, _pressedCode, _keyTable);
-    }
-
-    void VirtualInput::AdministerAndSendKey(const actiontype type, const uint32_t code)
-    {
-        bool trigger;
-
-        if (code == KeyMap::modifier::LEFTSHIFT) {
-            trigger = SendModifier(type, enumModifier::LEFTSHIFT);
-        } else if (code == KeyMap::modifier::RIGHTSHIFT) {
-            trigger = SendModifier(type, enumModifier::RIGHTSHIFT);
-        } else if (code == KeyMap::modifier::LEFTALT) {
-            trigger = SendModifier(type, enumModifier::LEFTALT);
-        } else if (code == KeyMap::modifier::RIGHTALT) {
-            trigger = SendModifier(type, enumModifier::RIGHTALT);
-        } else if (code == KeyMap::modifier::LEFTCTRL) {
-            trigger = SendModifier(type, enumModifier::LEFTCTRL);
-        } else if (code == KeyMap::modifier::RIGHTCTRL) {
-            trigger = SendModifier(type, enumModifier::RIGHTCTRL);
-        } else {
-            trigger = true;
-        }
-
-        if (trigger == true) {
-            SendKey(type, code);
-        }
-
-        DispatchRegisteredKey(type, code);
+        SendKey(REPEAT, code);
+        if (--_repeatCounter == 0) {
+            _lock.Lock();
+            DispatchRegisteredKey(RELEASED, _pressedCode);
+            _lock.Unlock();
+        } 
     }
 
     bool VirtualInput::SendModifier(const actiontype type, const enumModifier mode)
@@ -445,7 +402,39 @@ ENUM_CONVERSION_BEGIN(PluginHost::VirtualInput::KeyMap::modifier)
 
     void VirtualInput::DispatchRegisteredKey(const actiontype type, uint32_t code)
     {
-        _lock.Lock();
+
+        uint32_t sendCode = code;
+
+        if (sendCode != static_cast<uint32_t>(~0)) {
+            if (type == PRESSED) {
+                TRACE_L1("Pressed: keyCode: %d, sending: %d", code, sendCode);
+                _repeatCounter = _repeatLimit;
+                _repeatKey.Arm(sendCode);
+                _pressedCode = code;
+
+                uint16_t modifiers = static_cast<uint16_t>((sendCode >> 16) & 0xFFFF);
+
+                if (modifiers != 0) {
+                    ModifierKey(PRESSED, modifiers);
+                }
+            } else {
+                ASSERT (_pressedCode == code);
+                sendCode = _repeatKey.Reset();
+                _pressedCode = ~0;
+                TRACE_L1("Released: keyCode: %d, sending: %d", code, sendCode);
+            }
+
+            SendKey(type, (sendCode & 0xFFFF));
+
+            if (type == RELEASED) {
+                uint16_t modifiers = static_cast<uint16_t>((sendCode >> 16) & 0xFFFF);
+                if (modifiers != 0) {
+                    ModifierKey(RELEASED, modifiers);
+                }
+            }
+
+            SendKey(COMPLETED, (sendCode & 0xFFFF));
+        }
 
         for (INotifier* element : _notifierList) {
             element->Dispatch(type, code);
@@ -458,9 +447,7 @@ ENUM_CONVERSION_BEGIN(PluginHost::VirtualInput::KeyMap::modifier)
             for (INotifier* element : notifierList) {
                 element->Dispatch(type, code);
             }
-        }
-
-        _lock.Unlock();
+        }  
     }
 
 #if !defined(__WIN32__) && !defined(__APPLE__)

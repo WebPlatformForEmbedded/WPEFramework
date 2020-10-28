@@ -786,13 +786,12 @@ namespace PluginHost
     void Server::Close()
     {
         Plugin::Controller* destructor(_controller->ClassType<Plugin::Controller>());
-        _dispatcher.Block();
         _connections.Close(Core::infinite);
         destructor->Stopped();
         _services.Destroy();
+        _dispatcher.Stop();
         destructor->Release();
         _inputHandler.Deinitialize();
-        _dispatcher.Wait(Core::Thread::BLOCKED | Core::Thread::STOPPED, Core::infinite);
     }
 }
 }

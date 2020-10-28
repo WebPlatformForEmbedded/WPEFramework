@@ -6,88 +6,121 @@
 namespace WPEFramework {
 namespace PluginHost {
 
-    class EXTERNAL VirtualInput {
+   class EXTERNAL VirtualInput {
     private:
-        VirtualInput(const VirtualInput&) = delete;
-        VirtualInput& operator=(const VirtualInput&) = delete;
 
-        class RepeatKeyTimer : Core::WatchDogType<RepeatKeyTimer&> {
-        private:
-            RepeatKeyTimer() = delete;
-            RepeatKeyTimer(const RepeatKeyTimer&) = delete;
-            RepeatKeyTimer& operator=(const RepeatKeyTimer&) = delete;
-
-            typedef Core::WatchDogType<RepeatKeyTimer&> BaseClass;
-            static constexpr uint32_t RepeatStackSize = 64 * 1024;
-
-        public:
-#ifdef __WIN32__
-#pragma warning(disable : 4355)
-#endif
-            RepeatKeyTimer(VirtualInput& parent)
-                : BaseClass(RepeatStackSize, _T("RepeatKeyTimer"), *this)
-                , _parent(parent)
-                , _startTime(0)
-                , _intervalTime(0)
-                , _code(0)
-            {
-            }
-#ifdef __WIN32__
-#pragma warning(default : 4355)
-#endif
-            ~RepeatKeyTimer()
-            {
-            }
-
-        public:
-            void Interval(const uint16_t startTime, const uint16_t intervalTime)
-            {
-                _startTime = startTime;
-                _intervalTime = intervalTime;
-            }
-            void Arm(const uint16_t code)
-            {
-                if (_startTime != 0) {
-                    BaseClass::Lock();
-
-                    BaseClass::Arm(_startTime);
-                    _code = code;
-
-                    BaseClass::Unlock();
-                }
-            }
-            void Reset()
-            {
-                if (_startTime != 0) {
-                    BaseClass::Reset();
-                }
-            }
-            uint32_t Expired()
-            {
-                _parent.RepeatKey(_code);
-
-                // Let's retrigger at the same time..
-                return (_intervalTime);
-            }
-
-            virtual void SelectListener(const string& /* listener */)
-            {
-            }
-
-        private:
-            VirtualInput& _parent;
-            uint16_t _startTime;
-            uint16_t _intervalTime;
-            uint16_t _code;
-        };
-
-        enum enumModifier {
+ enum enumModifier {
             LEFTSHIFT = 0, //  0..3  bits are for LeftShift reference counting (max 15)
             RIGHTSHIFT = 4, //  4..7  bits are for RightShift reference counting (max 15)
             LEFTALT = 8, //  8..11 bits are for LeftAlt reference counting (max 15)
             RIGHTALT = 12, // 12..15 bits are for RightAlt reference counting (max 15)
             LEFTCTRL = 16, // 16..19 bits are for LeftCtrl reference counting (max 15)
             RIGHTCTRL = 20 // 20..23 bits are for RightCtrl reference counting (max 15)
+        };
+        
+        class RepeatKeyTimer : public Core::IDispatch {
+        private:
+            RepeatKeyTimer() = delete;
+            RepeatKeyTimer(const RepeatKeyTimer&) = delete;
+            RepeatKeyTimer& operator=(const RepeatKeyTimer&) = delete;
+
+        public:
+#ifdef __WIN32__
+#pragma warning(disable : 4355)
+#endif
+            RepeatKeyTimer(VirtualInput* parent)
+                : _parent(*parent)
+                , _adminLock()
+                , _startTime(0)
+                , _intervalTime(0)
+                , _code(~0)
+                , _nextSlot()
+                , _job()
+            {
+            }
+            
+#ifdef __WIN32__
+#pragma warning(default : 4355)
+#endif
+            ~RepeatKeyTimer() override
+            {
+            }
+
+        public:
+            void AddReference()
+            {
+                _job = Core::ProxyType<Core::IDispatch>(static_cast<Core::IDispatch&>(*this));
+            }
+
+            void DropReference()
+            {
+                Reset();
+                Core::WorkerPool::Instance().Revoke(_job);
+                _job.Release();
+            }
+            void Interval(const uint16_t startTime, const uint16_t intervalTime)
+            {
+                _startTime = startTime;
+                _intervalTime = intervalTime;
+            }
+            void Arm(const uint32_t code)
+            {
+                ASSERT(_code == static_cast<uint32_t>(~0));
+
+                if (_startTime != 0) {
+      
+                    _nextSlot = Core::Time::Now().Add(_startTime);
+                    
+                    Core::WorkerPool::Instance().Revoke(_job);
+                    
+                    _adminLock.Lock();
+
+                    _code = code;
+
+                    _adminLock.Unlock();
+
+                    Core::WorkerPool::Instance().Schedule(_nextSlot, _job);
+                }
+            }          
+            uint32_t Reset()
+            {
+                _adminLock.Lock();
+                uint32_t result = _code;
+                _code = ~0;
+                _adminLock.Unlock();
+                return (result);
+            } 
+
+        private:
+
+            void Dispatch() override
+            {
+                _adminLock.Lock();
+
+                if(_code != static_cast<uint32_t>(~0)) {
+                    uint16_t code = static_cast<uint16_t>(_code & 0xFFFF);
+
+                    ASSERT(_nextSlot.IsValid());
+
+                    _parent.RepeatKey(code);
+
+                    _nextSlot.Add(_intervalTime);
+                    
+                    Core::WorkerPool::Instance().Schedule(_nextSlot, _job);
+                }
+
+                _adminLock.Unlock();
+
+            }
+
+        private:
+            VirtualInput& _parent;
+            Core::CriticalSection _adminLock;
+            uint16_t _startTime;
+            uint16_t _intervalTime;
+            uint32_t _code;
+            Core::Time _nextSlot;
+            Core::ProxyType<Core::IDispatch> _job;    
         };
 
     public:
@@ -336,17 +369,15 @@ namespace PluginHost {
         typedef std::map<const string, PostLookupEntries> PostLookupMap;
 
     public:
+        VirtualInput(const VirtualInput&) = delete;
+        VirtualInput& operator=(const VirtualInput&) = delete;    
         VirtualInput();
         virtual ~VirtualInput();
 
     public:
-        inline void Interval(const uint16_t startTime, const uint16_t intervalTime)
+        inline void Interval(const uint16_t startTime, const uint16_t intervalTime, const uint16_t limit)
         {
             _repeatKey.Interval(startTime, intervalTime);
-        }
-
-        inline void RepeatLimit(uint16_t limit)
-        {
             _repeatLimit = limit;
         }
 
@@ -478,7 +509,7 @@ namespace PluginHost {
         Core::CriticalSection _lock;
 
     private:
-        RepeatKeyTimer _repeatKey;
+        Core::ProxyObject<RepeatKeyTimer> _repeatKey;
         uint32_t _modifiers;
         std::map<const string, KeyMap> _mappingTables;
         KeyMap* _defaultMap;
