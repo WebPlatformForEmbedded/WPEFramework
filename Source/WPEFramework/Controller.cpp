@@ -135,6 +135,8 @@ namespace Plugin {
                     request.Body(Core::proxy_cast<Web::IBody>(jsonBodyDownloadFactory.Element()));
                 } else if (index.Current() == _T("Configuration")) {
                     request.Body(Core::proxy_cast<Web::IBody>(jsonBodyTextFactory.Element()));
+                } else if (index.Current() == _T("Environment")) {
+                    request.Body(Core::proxy_cast<Web::IBody>(jsonBodyMetaDataFactory.Element()));
                 }
             }
         }
@@ -409,6 +411,31 @@ namespace Plugin {
                         }
                     }
                 }
+            } else if (index.Current() == _T("Environment")) {
+
+                result->ErrorCode = Web::STATUS_BAD_REQUEST;
+                result->Message = _T("No name or value specified to set Environment");
+
+                string name = { (index.Next() == true ? index.Remainder().Text() : _T("")) };
+
+                if ( ( name.empty() == false ) && ( request.HasBody() == true ) ) {
+
+                    Core::ProxyType<const Web::JSONBodyType<PluginHost::MetaData>> data(request.Body<const Web::JSONBodyType<PluginHost::MetaData>>());
+
+                    if ( ( data.IsValid() == true ) && ( data->Value.IsSet() == true ) ) {
+
+                        if (Core::SystemInfo::SetEnvironment(name, data->Value.Value(), true) == true) {
+                            result->ErrorCode = Web::STATUS_OK;
+                            result->Message = _T("Environment variable set succesfuly");
+                            TRACE(Trace::Information, (_T("Succesfully set environment variable [%s] to value [%s]"), name.c_str(), data->Value.Value().c_str()));
+                        }
+                    }
+                }
+
+                if( result->ErrorCode != Web::STATUS_OK ) {
+                    TRACE(Trace::Error, (_T("Could not set enironment variable [%s]"), ( name.empty() == true ? "" : name.c_str() ) ));
+                }
+
             } else if (index.Current() == _T("Discovery")) {
                 ASSERT(_probe != nullptr);
                 Core::URL::KeyValue options(request.Query.Value());
